@@ -1,0 +1,23 @@
+aws emr create-cluster --release-label emr-5.5.0 --instance-type m3.xlarge --instance-count 2 --applications Name=Hive --configurations https://s3.amazonaws.com/emr-related-files/spark_config.json --bootstrap-action Path=s3://emr-related-files/download.sh,Args=[]
+
+https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-ssh-tunnel-local.html
+ssh -i EMR_Key.pem -N -L 8175:ec2-54-174-128-6.compute-1.amazonaws.com:7070 hadoop@ec2-54-174-128-6.compute-1.amazonaws.com
+
+
+aws emr create-cluster --applications Name=Ganglia Name=Spark Name=Zeppelin --ec2-attributes '{"KeyName":"EMR_Key","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-50c2a327","EmrManagedSlaveSecurityGroup":"sg-05bb857b","EmrManagedMasterSecurityGroup":"sg-eebd8390"}' --service-role EMR_DefaultRole --enable-debugging --release-label emr-5.5.0 --log-uri 's3n://aws-logs-600050769456-us-east-1/elasticmapreduce/' --name 'My cluster' --instance-groups '[{"InstanceCount":1,"InstanceGroupType":"MASTER","InstanceType":"m3.xlarge","Name":"Master Instance Group"},{"InstanceCount":2,"InstanceGroupType":"CORE","InstanceType":"m3.xlarge","Name":"Core Instance Group"}]' --configurations '[{"Classification":"spark","Properties":{"maximizeResourceAllocation":"true"},"Configurations":[]}]' --scale-down-behavior TERMINATE_AT_INSTANCE_HOUR --region us-east-1
+
+
+aws emr create-cluster --name "EMRTEST"--applications Name=Ganglia Name=Spark Name=Zeppelin --ec2-attributes '{"KeyName":"EMR_Key","InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-50c2a327","EmrManagedSlaveSecurityGroup":"sg-05bb857b","EmrManagedMasterSecurityGroup":"sg-eebd8390"}' --service-role EMR_DefaultRole --enable-debugging --release-label emr-5.5.0 --log-uri 's3n://aws-logs-600050769456-us-east-1/elasticmapreduce/' --name 'My cluster' --instance-groups '[{"InstanceCount":1,"InstanceGroupType":"MASTER","InstanceType":"m3.xlarge","Name":"Master Instance Group"},{"InstanceCount":2,"InstanceGroupType":"CORE","InstanceType":"m3.xlarge","Name":"Core Instance Group"}]' --configurations https://s3.amazonaws.com/emr-related-files/spark_config.json --scale-down-behavior TERMINATE_AT_INSTANCE_HOUR --region us-east-1 --bootstrap-action Path=s3://emr-related-files/download.sh,Args=[]
+
+
+aws emr create-cluster --name "Test cluster" --ami-version 2.4 --applications Name=Hive Name=Pig --use-default-roles --ec2-attributes KeyName=myKey --instance-groups InstanceGroupType=MASTER,InstanceCount=1,InstanceType=m3.xlarge InstanceGroupType=CORE,InstanceCount=2,InstanceType=m3.xlarge --steps Type=PIG,Name="Pig Program",ActionOnFailure=CONTINUE,Args=[-f,s3://mybucket/scripts/pigscript.pig,-p,INPUT=s3://mybucket/inputdata/,-p,OUTPUT=s3://mybucket/outputdata/,$INPUT=s3://mybucket/inputdata/,$OUTPUT=s3://mybucket/outputdata/]
+
+
+
+THIS WORKS
+aws emr create-cluster --name "Test cluster" --release-label emr-5.5.0 --use-default-roles --ec2-attributes KeyName=myKey --applications Name=Hive Name=Pig Name=Spark --instance-count 3 --instance-type m3.xlarge --bootstrap-action Path="s3://emr-related-files/download.sh" --configurations https://s3.amazonaws.com/emr-related-files/spark_config.json
+
+
+aws emr create-cluster --name "Test cluster" --release-label emr-5.5.0 --use-default-roles --ec2-attributes KeyName=EMR_Key --applications Name=Hive Name=Pig Name=Spark --instance-count 3 --instance-type m3.xlarge --bootstrap-action Path="s3://emr-related-files/download.sh" --configurations https://s3.amazonaws.com/emr-related-files/spark_config.json
+
+ssh -i "EMR_Key.pem" hadoop@ec2-184-73-5-109.compute-1.amazonaws.com
