@@ -18,7 +18,6 @@ if __name__ == "__main__":
     for (word, count) in output:
         print("%s: %i" % (word, count))
     # Save word counts in S3 bucket
-    counts.saveAsTextFile('output.txt')
     counts.saveAsTextFile("s3n://emr-related-files/output.txt")
     # Stop SparkContext
     sc.stop()

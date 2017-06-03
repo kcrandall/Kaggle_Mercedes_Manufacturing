@@ -19,19 +19,19 @@ logger.addHandler(ch)
 
 class EMRController(object):
     def __init__(self, profile_name = 'default', aws_access_key = False, aws_secret_access_key = False, region_name = 'us-east-1',
-                 cluster_name = 'My Cluster', instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
+                 cluster_name = 'Spark-Cluster', instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
                  key_name = 'EMR_Key', subnet_id = 'subnet-50c2a327', software_version = 'emr-5.5.0', s3_bucket = 'emr-related-files' ):
         self.aws_access_key = aws_access_key
         self.aws_secret_access_key = aws_secret_access_key
         self.region_name = region_name
-        self.cluster_name = cluster_name                                        # Application name
+        self.cluster_name = cluster_name+'_'+self.get_datetime_str()            # Application name
         self.instance_count = instance_count
         self.master_instance_type = master_instance_type
         self.slave_instance_type = slave_instance_type
         self.key_name = key_name
         self.subnet_id = subnet_id
         self.software_version = software_version
-        self.profile_name = profile_name                                        # Define IAM profile name (see: http://boto3.readthedocs.io/en/latest/guide/configuration.html)
+        self.profile_name = profile_name                                        # Define IAM profile name (see: http://boto3.readthedocs.io/en/latest/guide/configuration.html)(config file located at user folder .aws directory)
         self.s3_bucket = s3_bucket                                              # S3 Bucket to use for storage
         self.path_script = os.path.dirname( __file__ )
         self.file_to_run = 'test.py'                                            # The file you want to run from the compressed files
@@ -78,6 +78,7 @@ class EMRController(object):
                             s3_bucket=self.s3_bucket),
                     }
                 },
+                # UNCOMMENT FOR AUTOTERMINATE BEHAVIOR
                 # {
                 #     'Name': 'idle timeout',
                 #     'ScriptBootstrapAction': {
@@ -85,6 +86,59 @@ class EMRController(object):
                 #         'Args': ['3600', '300']
                 #     }
                 # },
+            ],
+            Configurations=[
+            #     {
+            #         'Classification': 'spark-env',
+            #         'Configurations': [
+            #             {
+            #                 "Classification": "export",
+            #                 "Properties": {
+            #                     "PYSPARK_PYTHON": "python34",
+            #                     "PYSPARK_PYTHON": "/home/hadoop/conda/bin/python",
+            #                     "PYSPARK_DRIVER_PYTHON":"/home/hadoop/conda/bin/python"
+            #                 },
+            #                 "Configurations": []
+            #             }
+            #         ],
+            #         'Properties': {
+            #         }
+            #     },
+            #     {
+            #         "Classification": "hadoop-env",
+            #         "Properties": {
+            #
+            #         },
+            #         "Configurations": [
+            #           {
+            #             "Classification": "export",
+            #             "Properties": {
+            #               "HADOOP_DATANODE_HEAPSIZE": "2048",
+            #               "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19"
+            #             },
+            #             "Configurations": [
+            #
+            #             ]
+            #           }
+            #         ]
+            #   },
+              {
+                  "Classification": "hadoop-env",
+                  "Properties": {
+
+                  },
+                  "Configurations": [
+                    {
+                      "Classification": "export",
+                      "Properties": {
+                          "PYTHONHASHSEED": "123",
+                      },
+                      "Configurations": [
+
+                      ]
+                    }
+                  ]
+            }
             ],
             VisibleToAllUsers=True,
             JobFlowRole='EMR_EC2_DefaultRole',
@@ -261,13 +315,16 @@ class EMRController(object):
                 job_state = job_response.get("Cluster").get("Status").get("State")
                 job_state_reason = job_response.get("Cluster").get("Status").get("StateChangeReason").get("Message")
 
-                if job_state in ["WAITING", "TERMINATED", "TERMINATED_WITH_ERRORS"]:
+                if job_state in ["TERMINATING","TERMINATED","TERMINATED_WITH_ERRORS"]:
                     step = False
                     logger.info(
                         "Script stops with state: {job_state} "
                         "and reason: {job_state_reason}".format(job_state=job_state, job_state_reason=job_state_reason))
                     break
-                else:
+                elif job_state in ["WAITING","RUNNING"]:
+                    step = True
+                    break
+                else: # BOOTSTRAPPING,STARTING
                     logger.info(job_response)
 
             if step:
