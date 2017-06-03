@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-# install conda (conda 4.2 defaults to pythone35)
+# install conda (conda 4.2 defaults to python35)
 wget --quiet http://repo.continuum.io/archive/Anaconda3-4.2.0-Linux-x86_64.sh -O ~/anaconda.sh \
     && /bin/bash ~/anaconda.sh -b -p $HOME/conda
 
@@ -18,8 +18,8 @@ conda install -y ipython jupyter
 
 # install pysparkling
 pip install h2o
-pip install pysparkling
-# pip install h2o_pysparkling_2.1
+# pip install pysparkling
+pip install h2o_pysparkling_2.1
 
 #INSTALL SPARKLING WATER
 wget http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/sparkling-water-2.1.8.zip

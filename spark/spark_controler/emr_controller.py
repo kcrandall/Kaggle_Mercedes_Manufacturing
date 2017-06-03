@@ -144,7 +144,7 @@ class EMRController(object):
                     {
                       "Classification": "export",
                       "Properties": {
-                          "PYTHONHASHSEED": "123",
+                          "PYTHONHASHSEED": "123", #This is required for pyspark so all nodes have the same seed
                       },
                       "Configurations": [
 
