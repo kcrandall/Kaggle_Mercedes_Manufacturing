@@ -7,6 +7,9 @@ import os
 from pysparkling import *
 import h2o
 # --conf spark.dynamicAllocation.enabled=false
+# http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/index.html
+# https://pypi.python.org/pypi/h2o_pysparkling_2.1/2.1.7
+# wget http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/sparkling-water-2.1.8.zip
 if __name__ == "__main__":
     # Start SparkContext
     sc = SparkContext(appName="PythonWordCount")

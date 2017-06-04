@@ -12,6 +12,6 @@ deployer = EMRController()
 deployer.path_script = os.path.dirname( __file__ )
 deployer.file_to_run = 'test.py'
 deployer.instance_count = 2
-deployer.run('create')
-# deployer.job_flow_id = 'j-17LA5TIOEEEU3'
+# deployer.run('create')
+deployer.job_flow_id = 'j-1DLK6QPB3VP18'
 deployer.run('run_job')
