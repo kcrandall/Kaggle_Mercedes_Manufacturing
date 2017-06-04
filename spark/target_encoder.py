@@ -1,4 +1,4 @@
-def target_encoder(training_frame, test_frame, x, y, lambda_=0.15, threshold=150, test=False, frame_type='spark',id_col=None):
+def target_encoder(training_frame, test_frame, x, y, lambda_=0.15, threshold=150, test=False, frame_type='h2o',id_col=None):
 
     """ Applies simple target encoding to categorical variables.
 
@@ -10,7 +10,7 @@ def target_encoder(training_frame, test_frame, x, y, lambda_=0.15, threshold=150
     :param threshold: Number below which a level is considered small enough to be shrunken.
     :param test: Whether or not to print the row_val_dict for testing purposes.
     :param frame_type: The type of frame being used. Accepted: ['h2o','pandas','spark']
-    :param id_col: The name of the id column for spark dataframes only. Will conserve memory and only return 3 columns in dfs(id,x,x_Tencode)
+    :param id_col: The name of the id column for spark dataframes only. Will conserve memory and only return 2 columns in dfs(id,x_Tencode)
     :return: Tuple of encoded variable from train and test set as H2OFrames.
 
     """
@@ -142,3 +142,54 @@ def target_encoder(training_frame, test_frame, x, y, lambda_=0.15, threshold=150
         tsdf.columns = [encode_name]
 
         return (trdf, tsdf)
+
+#EXAMPLE OF HOW TO RUN WITH A SPARK CLUSTER
+# import pandas as pd
+# import numpy as np
+# import time
+# import os
+#
+# import sys
+# from operator import add
+# from pyspark import SparkContext
+# from pyspark.sql import SparkSession
+# from pyspark.sql import SQLContext
+# from pyspark.sql import functions as F #https://stackoverflow.com/questions/39504950/python-pyspark-get-sum-of-a-pyspark-dataframe-column-values
+#
+# from get_type_lists import get_type_lists
+# from target_encoder import target_encoder
+#
+# sc = SparkContext(appName="App")
+# sqlContext = SQLContext(sc)
+#
+#
+# Y            = 'y'
+# ID_VAR       = 'ID'
+# DROPS        = [ID_VAR]
+#
+# train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/train.csv')
+# test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/test.csv')
+#
+# print(train.schema)
+# print(train.dtypes)
+#
+# original_numerics, categoricals = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark') #These three have test varaibles that don't occur in the train dataset
+#
+#
+#
+# print("Encoding numberic variables...")
+# training_df_list, test_df_list = list(),list()
+# for i, var in enumerate(categoricals):
+#     total = len(categoricals)
+#
+#     print('Encoding: ' + var + ' (' + str(i+1) + '/' + str(total) + ') ...')
+#
+#     tr_enc, ts_enc = target_encoder(train, test, var, Y,frame_type='spark',id_col=ID_VAR)
+#     training_df_list.append(tr_enc)
+#     test_df_list.append(ts_enc)
+# #join all the new variables
+# for i, df in enumerate(training_df_list):
+#     train = train.join(training_df_list[i],ID_VAR,'inner')
+#     test = test.join(test_df_list[i],ID_VAR,'inner')
+# print(train.rdd.collect())
+# print('Done encoding.')
