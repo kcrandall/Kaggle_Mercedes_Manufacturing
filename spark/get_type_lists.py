@@ -6,7 +6,6 @@ def get_type_lists(frame, rejects=['Id', 'ID','id'],frame_type='h2o'):
     :param rejects: Variable names not to be included in returned lists.
     :param frame_type: The type of frame being used. Accepted: ['h2o','pandas','spark']
     :return: Tuple of lists for numeric and categorical variables in the frame.
-
     """
 
     #Handle spark type data frames

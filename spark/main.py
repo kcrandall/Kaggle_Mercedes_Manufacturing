@@ -11,7 +11,9 @@ from spark_controler.emr_controller import EMRController
 deployer = EMRController()
 deployer.path_script = os.path.dirname( __file__ )
 deployer.file_to_run = 'test.py'
-deployer.instance_count = 2
+deployer.master_instance_type = 'm4.xlarge'
+deployer.slave_instance_type = 'r4.4xlarge'
+deployer.instance_count = 4
 # deployer.run('create')
-deployer.job_flow_id = 'j-1DLK6QPB3VP18'
+deployer.job_flow_id = 'j-275TC924AO8C1'
 deployer.run('run_job')

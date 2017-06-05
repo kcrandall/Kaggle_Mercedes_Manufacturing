@@ -10,6 +10,9 @@ echo -e '\nexport PATH=$HOME/conda/bin:$PATH' >> $HOME/.bashrc && source $HOME/.
 # install packages
 conda install -y ipython jupyter
 
+#h2o uses pyqt4, downgrade
+conda install pyqt=4
+
 # needed for PySparkling
 # conda install requests
 # conda install six
@@ -30,3 +33,6 @@ unzip sparkling-water-2.1.8.zip
 # #Thows Errors if all clusters don't have the same python hash seed as of python 3.2.3
 # But need to set in Configurations script, can't set user env variables in bootstrap
 # sudo export PYTHONHASHSEED=123
+
+
+sudo apt-get install python-qt4
