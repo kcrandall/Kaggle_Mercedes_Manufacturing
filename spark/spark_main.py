@@ -98,7 +98,7 @@ encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],fram
 #                 DONE WITH PREPROCESSING - START TRAINING                     #
 ################################################################################
 import h2o
-h2o.init(nthreads = -1)
+h2o.init(nthreads = -1)                                      #Make sure its using all cores in cluster
 h2o.show_progress()                                          # turn on progress bars
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.grid.grid_search import H2OGridSearch               # grid search
@@ -116,7 +116,6 @@ base_train, stack_train = trainHF.split_frame([0.5], seed=12345)
 base_valid, stack_valid = validHF.split_frame([0.5], seed=12345)
 
 def glm_grid(X, y, train, valid):
-
     """ Wrapper function for penalized GLM with alpha and lambda search.
 
     :param X: List of inputs.
