@@ -112,7 +112,7 @@ from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.grid.grid_search import H2OGridSearch               # grid search
 from pysparkling import *
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')                                       #Need this if running matplot on a server w/o display
 hc = H2OContext.getOrCreate(spark)
 
 print('Making h2o frames...')
@@ -195,9 +195,9 @@ stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
 stack_train = stack_train.cbind(glm2.predict(stack_train))
 stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
 
-test = test.cbind(glm0.predict(test))
-test = test.cbind(glm1.predict(test))
-test = test.cbind(glm2.predict(test))
+testHF = testHF.cbind(glm0.predict(test))
+testHF = testHF.cbind(glm1.predict(test))
+testHF = testHF.cbind(glm2.predict(test))
 logger.log_string('glm3')
 glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
 
