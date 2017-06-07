@@ -20,7 +20,8 @@ logger.addHandler(ch)
 class EMRController(object):
     def __init__(self, profile_name = 'default', aws_access_key = False, aws_secret_access_key = False, region_name = 'us-east-1',
                  cluster_name = 'Spark-Cluster', instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
-                 key_name = 'EMR_Key', subnet_id = 'subnet-50c2a327', software_version = 'emr-5.5.0', s3_bucket = 'emr-related-files', path_script =os.path.dirname( __file__ ) ):
+                 key_name = 'EMR_Key', subnet_id = 'subnet-50c2a327', software_version = 'emr-5.5.0', s3_bucket = 'emr-related-files', path_script =os.path.dirname( __file__ ),
+                 additional_job_args=['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false'] ):
         self.init_datetime_string = self.get_datetime_str()                     #Used to create a s3 directory so multiple scripts don't overwrite the same files
 
         self.aws_access_key = aws_access_key                                    #If you don't wan to use a credential from the AWS CLI on your machine set this
@@ -38,7 +39,7 @@ class EMRController(object):
         self.path_script = path_script                                          #The path to your python script. If you are running /user/me/script.py set this to '/user/me'. If you are importing this from the same dir leave it default
         self.file_to_run = 'test.py'                                            # The file you want to run from the compressed files
         self.job_flow_id = None                                                 # AWS's unique ID for an EMR Cluster exameple: 'j-17LA5TIOEEEU3'
-
+        self.additional_job_args = additional_job_args                          #Additional args for submitting an application to cluster
 
 
     def boto_client(self, service):
@@ -60,7 +61,7 @@ class EMRController(object):
         """
         Spins up a cluster on AWS EMR.
 
-        :return: the response from boto
+        :return: the response object from boto
         """
         response = self.boto_client("emr").run_job_flow(
             Name=self.cluster_name,
@@ -79,9 +80,9 @@ class EMRController(object):
                 {
                     'Name': 'Spark'
                 },
-                # {
-                #     'Name': 'Hadoop'
-                # }
+                {
+                    'Name': 'Hadoop'
+                }
             ],
             BootstrapActions=[
                 {
@@ -165,9 +166,9 @@ class EMRController(object):
         This step has to be run directly after the bootstrapping to ensure that
         conda has been properly linked to the spark environment.
 
-        :param job_flow_id: The clusters id example: j-17LA5TIOEEEU3
-        :param master_dns: the dns address of the master node
-        :return: the response from boto
+        :param string job_flow_id: The clusters id example: j-17LA5TIOEEEU3
+        :param string master_dns: the dns address of the master node
+        :return: the response object from boto3
         """
         response = self.boto_client("emr").add_job_flow_steps(
             JobFlowId=job_flow_id,
@@ -196,17 +197,25 @@ class EMRController(object):
         logger.info(response)
         return response
 
-    def add_run_step(self, job_flow_id,name_of_script_directory):
+    def add_spark_submit_step(self, job_flow_id,name_of_script_directory):
         """
         Steps for EMR to upload the python files and run them as a spark-submit
         on the cluster.
         First it uploads the .tar file, then decompresses it, then spark-submits
         it.
 
-        :param job_flow_id: The clusters id example: j-17LA5TIOEEEU3
-        :param name_of_script_directory: the name of the directory to hold scripts on s3 and master file should be a unique id to prevent overwritting
-        :return: the response from boto
+        :param string job_flow_id: The clusters id example: j-17LA5TIOEEEU3
+        :param string name_of_script_directory: the name of the directory to hold scripts on s3 and master node. The file/directory holding the file should be a unique id to prevent overwritting
+        :return: the response object from boto
         """
+
+        args = []
+        args.append('spark-submit')
+        if self.additional_job_args:
+            for arg in self.additional_job_args:
+                args.append(arg)
+        args.append("/home/hadoop/scripts/" + name_of_script_directory + '/' + self.file_to_run)
+
         response = self.boto_client("emr").add_job_flow_steps(
             JobFlowId=job_flow_id,
             Steps=[
@@ -234,10 +243,7 @@ class EMRController(object):
                     'ActionOnFailure': 'CONTINUE',
                     'HadoopJarStep': {
                         'Jar': 'command-runner.jar',
-                        'Args': [
-                            "spark-submit",
-                            "/home/hadoop/scripts/" + name_of_script_directory + '/' + self.file_to_run
-                        ]
+                        'Args': args
                     }
                 }
             ]
@@ -251,7 +257,7 @@ class EMRController(object):
         Checks to see if the bucket exists if not it will create one by that
         name.
 
-        :param bucket_name: name of the s3 bucket to store all data from cluster
+        :param string bucket_name: name of the s3 bucket to store all data from cluster
         """
         s3 = self.boto_client("s3")
         try:
@@ -265,9 +271,9 @@ class EMRController(object):
         """
         Uploads a file to s3.
 
-        :param path_to_file: The path of the file on local to upload.
-        :param bucket_name: The name of the s3 bucket
-        :param path_on_s3: The path and file it should be called on s3.
+        :param string path_to_file: The path of the file on local to upload.
+        :param string bucket_name: The name of the s3 bucket
+        :param string path_on_s3: The path and file it should be called on s3.
         """
         logger.info(
             "Upload file '{file_name}' to bucket '{bucket_name}'".format(file_name=path_on_s3, bucket_name=bucket_name))
@@ -332,7 +338,7 @@ class EMRController(object):
         """
         This will run the execution of the program. Call this after vars are set.
 
-        :param execute_type: Used to either create a cluster or submit a job. Accepted: 'create' or 'run_job'
+        :param string execute_type: Used to either create a cluster or submit a job. Accepted: 'create' or 'run_job'
         """
         if execute_type == 'create':
             logger.info(
@@ -405,7 +411,7 @@ class EMRController(object):
             self.tar_python_script()
             self.upload_to_s3(os.path.dirname( __file__ )+'/files/script.tar.gz', bucket_name=self.s3_bucket,
                                     path_on_s3="temp/"+date_time_of_execute+"/script.tar.gz")
-            self.add_run_step(self.job_flow_id,date_time_of_execute)
+            self.add_spark_submit_step(self.job_flow_id,date_time_of_execute)
             return True
     def step_copy_data_between_s3_and_hdfs(self, c, src, dest):
         """

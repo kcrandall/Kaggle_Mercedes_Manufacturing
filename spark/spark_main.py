@@ -171,29 +171,35 @@ def glm_grid(X, y, train, valid):
     yhat_frame_df = yhat_frame[[y, 'predict']].as_data_frame()
     yhat_frame_df.sort_values(by='predict', inplace=True)
     yhat_frame_df.reset_index(inplace=True, drop=True)
-    # _ = yhat_frame_df.plot(title='Ranked Predictions Plot')
+    plt = yhat_frame_df.plot(title='Ranked Predictions Plot')
+    logger.log_string('Ranked Predictions Plot')
+    logger.log_matplotlib_plot(plt)
 
     # select best model
     return best
 print('Training..')
+logger.log_string('glm0')
 glm0 = glm_grid(original_nums, Y, base_train, base_valid)
+logger.log_string('glm1')
 glm1 = glm_grid(encoded_nums, Y, base_train, base_valid)
+logger.log_string('glm2')
 glm2 = glm_grid(encoded_combined_nums, Y, base_train, base_valid)
 print('DONE training.')
 
 
-# stack_train = stack_train.cbind(glm0.predict(stack_train))
-# stack_valid = stack_valid.cbind(glm0.predict(stack_valid))
-# stack_train = stack_train.cbind(glm1.predict(stack_train))
-# stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
-# stack_train = stack_train.cbind(glm2.predict(stack_train))
-# stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
-#
-# test = test.cbind(glm0.predict(test))
-# test = test.cbind(glm1.predict(test))
-# test = test.cbind(glm2.predict(test))
-#
-# glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
+stack_train = stack_train.cbind(glm0.predict(stack_train))
+stack_valid = stack_valid.cbind(glm0.predict(stack_valid))
+stack_train = stack_train.cbind(glm1.predict(stack_train))
+stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
+stack_train = stack_train.cbind(glm2.predict(stack_train))
+stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
+
+test = test.cbind(glm0.predict(test))
+test = test.cbind(glm1.predict(test))
+test = test.cbind(glm2.predict(test))
+logger.log_string('glm3')
+glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
+
 #
 # sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
 # sub['predict'] = sub['predict'].exp()

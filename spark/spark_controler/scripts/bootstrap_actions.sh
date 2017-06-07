@@ -28,8 +28,8 @@ pip install h2o
 pip install h2o_pysparkling_2.1
 
 #INSTALL SPARKLING WATER
-wget http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/sparkling-water-2.1.8.zip
-unzip sparkling-water-2.1.8.zip
+# wget http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/sparkling-water-2.1.8.zip
+# unzip sparkling-water-2.1.8.zip
 
 
 
