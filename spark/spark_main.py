@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import time
 import os
+from tabulate import tabulate
 
 import sys
 from operator import add
@@ -15,14 +16,20 @@ from get_type_lists import get_type_lists
 from target_encoder import target_encoder
 from feature_combiner import feature_combiner
 
+from logging_lib.LoggingController import LoggingController
+
+logger = LoggingController()
+logger.s3_bucket = 'emr-related-files'
+
 sc = SparkContext(appName="App")
 sc.setLogLevel('WARN') #Get rid of all the junk in output
 sqlContext = SQLContext(sc)
 spark = SparkSession.builder \
-        #.master("local") \
         .appName("App") \
-        # .config("spark.some.config.option", "some-value") \
         .getOrCreate()
+        #.master("local") \
+        # .config("spark.some.config.option", "some-value") \
+
 
 Y            = 'y'
 ID_VAR       = 'ID'
@@ -35,8 +42,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 #Load data from s3
 train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/train.csv')
 test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/test.csv')
-train.show(2)
-# print(train.count)
+
+
 #Work around for splitting wide data, you need to split on only an ID varaibles
 #Then join back with a train varaible (bug in spark as of 2.1 with randomSplit())
 (train1,valid1) = train.select(ID_VAR).randomSplit([0.7,0.3], seed=123)
@@ -57,6 +64,7 @@ for i, var in enumerate(cats):
     total = len(cats)
 
     print('Encoding: ' + var + ' (' + str(i+1) + '/' + str(total) + ') ...')
+    logger.log_string('Encoding: ' + var + ' (' + str(i+1) + '/' + str(total) + ') ...')
 
     tr_enc,v_enc, ts_enc = target_encoder(train, test, var, Y,valid_frame=valid,frame_type='spark',id_col=ID_VAR)
 
@@ -111,6 +119,13 @@ trainHF = hc.as_h2o_frame(train, "trainTable")
 validHF = hc.as_h2o_frame(valid, "testTable")
 testHF = hc.as_h2o_frame(test, "validTable")
 print('Done making h2o frames.')
+
+logger.log_string("Train Summary:")
+logger.log_string("Rows:{}".format(trainHF.nrow))
+logger.log_string("Cols:{}".format(trainHF.ncol))
+# print(trainHF.summary(return_data=True))
+# logger.log_string(tabulate(trainHF.summary(return_data=True),tablefmt="grid"))
+# logger.log_string(trainHF._ex._cache._tabulate('grid',False))
 
 base_train, stack_train = trainHF.split_frame([0.5], seed=12345)
 base_valid, stack_valid = validHF.split_frame([0.5], seed=12345)

@@ -21,9 +21,10 @@ sudo yum install -y libXdmcp
 # conda install future
 # conda install tabulate
 
+#Install boto3 for AWS resource mgt
+pip install boto3
 # install pysparkling
 pip install h2o
-# pip install pysparkling
 pip install h2o_pysparkling_2.1
 
 #INSTALL SPARKLING WATER

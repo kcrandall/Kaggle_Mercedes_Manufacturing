@@ -18,6 +18,18 @@ plt.yticks(np.arange(0, 81, 10))
 plt.legend((p1[0], p2[0]), ('Men', 'Women'))
 
 
-from LoggingController import LoggingController
-controller = LoggingController(profile_name = 'default', s3_bucket = 'emr-related-files')
-controller.upload_mathplotlib_to_s3(plt,'plots/plot.png')
+# from LoggingController import LoggingController
+# controller = LoggingController()
+# controller.profile_name = 'default'
+# controller.s3_bucket = 'emr-related-files'
+# controller.log_string('first')
+# controller.log_matplotlib_plot(plt)
+# controller.log_string('third')
+
+
+from MarkdownBuilder import MarkdownBuilder
+builder = MarkdownBuilder()
+builder.profile_name = 'default'
+builder.s3_bucket = 'emr-related-files'
+builder.path_to_save_logs_local = 'logs'
+builder.build_markdowns()
