@@ -37,7 +37,13 @@ class LoggingController(object):
         :return:
         """
         img_data = io.BytesIO()
-        plot.savefig(img_data, format='png')
+        try:
+            plot.savefig(img_data, format='png')
+        except:
+            #Some plots throw an error which is fixed by this
+            fig = plot.get_figure()
+            fig.savefig(img_data)
+
         img_data.seek(0)
 
         s3 = boto3.resource('s3')

@@ -111,7 +111,8 @@ h2o.show_progress()                                          # turn on progress 
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.grid.grid_search import H2OGridSearch               # grid search
 from pysparkling import *
-
+import matplotlib
+matplotlib.use('Agg')
 hc = H2OContext.getOrCreate(spark)
 
 print('Making h2o frames...')
@@ -200,7 +201,7 @@ test = test.cbind(glm2.predict(test))
 logger.log_string('glm3')
 glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
 
-#
+
 # sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
 # sub['predict'] = sub['predict'].exp()
 # print(sub.head())
