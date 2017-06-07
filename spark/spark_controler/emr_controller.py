@@ -1,6 +1,5 @@
 import boto3
 import botocore
-import yaml
 import time
 import logging
 import os
