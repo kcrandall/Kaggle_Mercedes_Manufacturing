@@ -18,8 +18,12 @@ from feature_combiner import feature_combiner
 
 from logging_lib.LoggingController import LoggingController
 
+#Define your s3 bucket to load and store data
+S3_BUCKET = 'emr-related-files'
+
+#Create a custom logger to log statistics and plots
 logger = LoggingController()
-logger.s3_bucket = 'emr-related-files'
+logger.s3_bucket = S3_BUCKET
 
 sc = SparkContext(appName="App")
 sc.setLogLevel('WARN') #Get rid of all the junk in output
@@ -40,8 +44,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 'X315','X29','X127','X236','X115','X383','X152','X151','X351','X327','X77','X104',\
 'X267','X95','X142']
 #Load data from s3
-train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/train.csv')
-test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/test.csv')
+train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/train.csv')
+test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/test.csv')
 
 
 #Work around for splitting wide data, you need to split on only an ID varaibles
@@ -117,8 +121,18 @@ hc = H2OContext.getOrCreate(spark)
 
 print('Making h2o frames...')
 trainHF = hc.as_h2o_frame(train, "trainTable")
-validHF = hc.as_h2o_frame(valid, "testTable")
-testHF = hc.as_h2o_frame(test, "validTable")
+validHF = hc.as_h2o_frame(valid, "validTable")
+testHF = hc.as_h2o_frame(test, "testTable")
+# trainHF.describe()
+# validHF.describe()
+# testHF.describe()
+print(trainHF.col_names)
+print()
+print(trainHF.ncol)
+print('---------------------------------------------------------------')
+print()
+print(testHF.col_names)
+print(testHF.ncol)
 print('Done making h2o frames.')
 
 logger.log_string("Train Summary:")
@@ -202,16 +216,16 @@ logger.log_string('glm3')
 glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
 
 
-# sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
-# sub['predict'] = sub['predict'].exp()
-# print(sub.head())
-#
-# # create time stamp
-# import re
-# import time
-# time_stamp = re.sub('[: ]', '_', time.asctime())
-#
-# # save file for submission
-# sub.columns = [ID_VAR, Y]
-# sub_fname = '../data/submission_' + str(time_stamp) + '.csv'
-# h2o.download_csv(sub, sub_fname)
+sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
+sub['predict'] = sub['predict'].exp()
+print(sub.head())
+
+# create time stamp
+import re
+import time
+time_stamp = re.sub('[: ]', '_', time.asctime())
+
+# save file for submission
+sub.columns = [ID_VAR, Y]
+sub_fname = 'Submission_'+str(time_stamp) + '.csv'
+h2o.download_csv(sub, 's3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
