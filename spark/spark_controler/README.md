@@ -35,7 +35,8 @@ deployer.job_flow_id = 'j-7F2D0E3L1W1W'
 deployer.path_script = os.path.dirname( __file__ )
 deployer.file_to_run = 'test.py'
 deployer.additional_job_args = ['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false']
-deployer.run('run_job')```
+deployer.run('run_job')
+```
 
 
 <b>Suggestion:</b> The bootstrapping action usually takes ~7-15minutes. Comment out the create step and go your console and copy your cluster id. Only run the run job function on the same cluster. This will also save costs as instance hours are rounded up so you always have to pay for one hour.
