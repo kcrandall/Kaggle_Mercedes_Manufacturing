@@ -21,8 +21,8 @@
 | file_to_run: The file you want to run from the compressed files. Or path to file if not in top directory. |
 | additional_job_args: Set to false if you don't want any parameters |
 
-<b>Code:</b>
-`import os
+`Code:
+import os
 deployer = EMRController()
 deployer.profile_name = 'default'
 deployer.subnet_id = 'subnet-50c2a327'
