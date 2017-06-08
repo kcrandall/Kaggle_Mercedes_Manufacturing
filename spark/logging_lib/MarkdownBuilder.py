@@ -17,7 +17,7 @@ class MarkdownBuilder(object):
         self.profile_name = profile_name                                        # Define IAM profile name (see: http://boto3.readthedocs.io/en/latest/guide/configuration.html)(config file located at user folder .aws directory)
         self.s3_bucket_path = s3_bucket_path                                    #The path to store the logs on your bucket (must end in a / b/c its a directory)
         self.app_name = app_name                                                #The name of your app
-        self.path_to_save_logs_local = path_to_save_logs_local                  #A path to save all the unbuilt logs on your local machine.
+        self.path_to_save_logs_local = path_to_save_logs_local                  #A path to save all the built logs on your local machine.
 
     def get_datetime_str(self):
         """

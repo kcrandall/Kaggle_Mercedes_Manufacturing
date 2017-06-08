@@ -9,6 +9,7 @@
 | profile_name: Define IAM profile name ('aws configure' cli command uses 'default')(see: http://boto3.readthedocs.io/en/latest/guide/configuration.html)  |
 | subnet_id: The Subnet on AWS for the cluster (try launching a random new cluster and copying from the console page.) |
 | key_name: Your ssh key used to ssh into the master node. i.e. 'My_KEY' |
+| s3_bucket: An s3 staging bucket to store logs and temporary files. |
 | master_instance_type: EC2 intance type for the master node(s) |
 | slave_instance_type: EC2 instance type for the worker nodes |
 | instance_count: Total number of instances (one will be master rest workers) |
@@ -22,11 +23,14 @@
 | additional_job_args: Set to false if you don't want any parameters |
 
 <b>Code:</b>
-```import os
+```
+import os
+from emr_controller import EMRController
 deployer = EMRController()
 deployer.profile_name = 'default'
 deployer.subnet_id = 'subnet-50c2a327'
 deployer.key_name = 'EMR_Key'
+deployer.s3_bucket = 'emr-related-files'
 deployer.master_instance_type = 'm4.xlarge'
 deployer.slave_instance_type = 'm4.xlarge'
 deployer.instance_count = 2

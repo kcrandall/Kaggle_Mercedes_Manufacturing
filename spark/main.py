@@ -9,6 +9,7 @@ deployer = EMRController()
 deployer.profile_name = 'default'
 deployer.subnet_id = 'subnet-50c2a327'
 deployer.key_name = 'EMR_Key'
+deployer.s3_bucket = 'emr-related-files'
 deployer.master_instance_type = 'm4.xlarge'
 deployer.slave_instance_type = 'm4.xlarge'
 deployer.instance_count = 2
