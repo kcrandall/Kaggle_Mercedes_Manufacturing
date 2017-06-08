@@ -195,9 +195,9 @@ stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
 stack_train = stack_train.cbind(glm2.predict(stack_train))
 stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
 
-testHF = testHF.cbind(glm0.predict(test))
-testHF = testHF.cbind(glm1.predict(test))
-testHF = testHF.cbind(glm2.predict(test))
+testHF = testHF.cbind(glm0.predict(testHF))
+testHF = testHF.cbind(glm1.predict(testHF))
+testHF = testHF.cbind(glm2.predict(testHF))
 logger.log_string('glm3')
 glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
 
