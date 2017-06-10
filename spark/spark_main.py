@@ -46,6 +46,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 #Load data from s3
 train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/train.csv')
 test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/test.csv')
+#this needs to be done for h2o glm.predict() bug (which needs same number of columns)
+test = test.withColumn(Y,test[ID_VAR])
 
 
 #Work around for splitting wide data, you need to split on only an ID varaibles
@@ -220,6 +222,7 @@ sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
 sub['predict'] = sub['predict'].exp()
 print(sub.head())
 
+
 # create time stamp
 import re
 import time
@@ -229,3 +232,7 @@ time_stamp = re.sub('[: ]', '_', time.asctime())
 sub.columns = [ID_VAR, Y]
 sub_fname = 'Submission_'+str(time_stamp) + '.csv'
 h2o.download_csv(sub, 's3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
+
+spark_sub_frame = hc.as_spark_dataframe(sub)
+
+spark_sub_frame.coalesce(1).write.option("header","true").csv('s3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)

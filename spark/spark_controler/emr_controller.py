@@ -70,6 +70,148 @@ class EMRController(object):
                 'MasterInstanceType': self.master_instance_type,
                 'SlaveInstanceType': self.slave_instance_type,
                 'InstanceCount': self.instance_count,
+                # 'InstanceGroups': [
+                #     {
+                #         'Name': 'string',
+                #         'Market': 'ON_DEMAND',#|'SPOT'
+                #         'InstanceRole': 'MASTER',#|'CORE'|'TASK'
+                #         # 'BidPrice': 'string',
+                #         'InstanceType': 'g2.2xlarge',
+                #         'InstanceCount': 1,
+                #         # 'Configurations': [
+                #         #     {
+                #         #         'Classification': 'string',
+                #         #         'Configurations': {'... recursive ...'},
+                #         #         'Properties': {
+                #         #             'string': 'string'
+                #         #         }
+                #         #     },
+                #         # ],
+                #         # 'EbsConfiguration': {
+                #         #     'EbsBlockDeviceConfigs': [
+                #         #         {
+                #         #             'VolumeSpecification': {
+                #         #                 'VolumeType': 'standard',#gp2, io1, standard
+                #         #                 # 'Iops': 123,
+                #         #                 'SizeInGB': 100
+                #         #             },
+                #         #             'VolumesPerInstance': 1
+                #         #         },
+                #         #     ],
+                #         #     'EbsOptimized': True#|False
+                #         # },
+                #         # 'AutoScalingPolicy': {
+                #         #     'Constraints': {
+                #         #         'MinCapacity': 123,
+                #         #         'MaxCapacity': 123
+                #         #     },
+                #         #     # 'Rules': [
+                #         #     #     {
+                #         #     #         'Name': 'string',
+                #         #     #         'Description': 'string',
+                #         #     #         'Action': {
+                #         #     #             'Market': 'ON_DEMAND'|'SPOT',
+                #         #     #             'SimpleScalingPolicyConfiguration': {
+                #         #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
+                #         #     #                 'ScalingAdjustment': 123,
+                #         #     #                 'CoolDown': 123
+                #         #     #             }
+                #         #     #         },
+                #         #     #
+                #         #     #         # 'Trigger': {
+                #         #     #         #     'CloudWatchAlarmDefinition': {
+                #         #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
+                #         #     #         #         'EvaluationPeriods': 123,
+                #         #     #         #         'MetricName': 'string',
+                #         #     #         #         'Namespace': 'string',
+                #         #     #         #         'Period': 123,
+                #         #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
+                #         #     #         #         'Threshold': 123.0,
+                #         #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
+                #         #     #         #         'Dimensions': [
+                #         #     #         #             {
+                #         #     #         #                 'Key': 'string',
+                #         #     #         #                 'Value': 'string'
+                #         #     #         #             },
+                #         #     #         #         ]
+                #         #     #         #     }
+                #         #     #         # }
+                #         #     #
+                #         #     #     },
+                #         #     # ]
+                #         # }
+                #     },
+                #     {
+                #         'Name': 'string',
+                #         'Market': 'ON_DEMAND',#|'SPOT'
+                #         'InstanceRole': 'CORE',#|'MASTER'|'TASK'
+                #         # 'BidPrice': 'string',
+                #         'InstanceType': 'g2.2xlarge',
+                #         'InstanceCount': 1,
+                #         # 'Configurations': [
+                #         #     {
+                #         #         'Classification': 'string',
+                #         #         'Configurations': {'... recursive ...'},
+                #         #         'Properties': {
+                #         #             'string': 'string'
+                #         #         }
+                #         #     },
+                #         # ],
+                #         # 'EbsConfiguration': {
+                #         #     'EbsBlockDeviceConfigs': [
+                #         #         {
+                #         #             'VolumeSpecification': {
+                #         #                 'VolumeType': 'standard',#gp2, io1, standard
+                #         #                 # 'Iops': 123,
+                #         #                 'SizeInGB': 100
+                #         #             },
+                #         #             'VolumesPerInstance': 1
+                #         #         },
+                #         #     ],
+                #         #     'EbsOptimized': True#|False
+                #         # },
+                #         # 'AutoScalingPolicy': {
+                #         #     'Constraints': {
+                #         #         'MinCapacity': 123,
+                #         #         'MaxCapacity': 123
+                #         #     },
+                #         #     # 'Rules': [
+                #         #     #     {
+                #         #     #         'Name': 'string',
+                #         #     #         'Description': 'string',
+                #         #     #         'Action': {
+                #         #     #             'Market': 'ON_DEMAND'|'SPOT',
+                #         #     #             'SimpleScalingPolicyConfiguration': {
+                #         #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
+                #         #     #                 'ScalingAdjustment': 123,
+                #         #     #                 'CoolDown': 123
+                #         #     #             }
+                #         #     #         },
+                #         #     #
+                #         #     #         # 'Trigger': {
+                #         #     #         #     'CloudWatchAlarmDefinition': {
+                #         #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
+                #         #     #         #         'EvaluationPeriods': 123,
+                #         #     #         #         'MetricName': 'string',
+                #         #     #         #         'Namespace': 'string',
+                #         #     #         #         'Period': 123,
+                #         #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
+                #         #     #         #         'Threshold': 123.0,
+                #         #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
+                #         #     #         #         'Dimensions': [
+                #         #     #         #             {
+                #         #     #         #                 'Key': 'string',
+                #         #     #         #                 'Value': 'string'
+                #         #     #         #             },
+                #         #     #         #         ]
+                #         #     #         #     }
+                #         #     #         # }
+                #         #     #
+                #         #     #     },
+                #         #     # ]
+                #         # }
+                #     },
+                # ],
                 'KeepJobFlowAliveWhenNoSteps': True,
                 'TerminationProtected': False,
                 'Ec2KeyName': self.key_name,

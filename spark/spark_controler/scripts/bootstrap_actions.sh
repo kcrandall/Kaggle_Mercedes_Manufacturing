@@ -1,5 +1,35 @@
 #!/usr/bin/env bash
 
+# #Mounted directory we want to use
+# export MOUNT_TO_USE=/mnt
+#
+# change Home directory
+# mkdir $MOUNT_TO_USE/home
+# export HOME=$MOUNT_TO_USE/home
+
+# #For NVIDA installations
+# mkdir $MOUNT_TO_USE/cuda
+# export CUDA_ROOT=$MOUNT_TO_USE/cuda
+# export CUDA_HOME=$CUDA_ROOT
+# mkdir $MOUNT_TO_USE/tmp
+# export TMP_DIR=$MOUNT_TO_USE/tmp
+
+# #AWS AMI is based on RHEL and CentOS. So use one of those for installers
+# wget http://developer.download.nvidia.com/compute/cuda/7.5/Prod/local_installers/cuda_7.5.18_linux.run
+# sudo sh cuda_7.5.18_linux.run --silent --verbose --toolkit --toolkitpath $CUDA_ROOT --tmpdir $TMP_DIR
+# export LD_LIBRARY_PATH=$CUDA_ROOT/lib64${LD_LIBRARY_PATH:+:${LD_PATH}}
+# export PATH=$CUDA_ROOT/bin${PATH:+:${PATH}}
+
+# # Install cudnn
+# wget https://s3.amazonaws.com/emr-related-files/cudnn-8.0-linux-x64-v5.1.tgz
+# tar xvzf cudnn-8.0-linux-x64-v5.1.tgz
+# cd cuda
+# sudo cp include/cudnn.h $CUDA_HOME/include/
+# sudo cp lib64/* $CUDA_HOME/lib64/
+
+# pip install keras
+# pip install tensorflow-gpu
+
 
 # install conda (conda 4.2 defaults to python35)
 wget --quiet http://repo.continuum.io/archive/Anaconda3-4.2.0-Linux-x86_64.sh -O ~/anaconda.sh \
