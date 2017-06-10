@@ -231,8 +231,8 @@ time_stamp = re.sub('[: ]', '_', time.asctime())
 # save file for submission
 sub.columns = [ID_VAR, Y]
 sub_fname = 'Submission_'+str(time_stamp) + '.csv'
-h2o.download_csv(sub, 's3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
+# h2o.download_csv(sub, 's3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
 
-spark_sub_frame = hc.as_spark_dataframe(sub)
+spark_sub_frame = hc.as_spark_frame(sub)
 
 spark_sub_frame.coalesce(1).write.option("header","true").csv('s3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
