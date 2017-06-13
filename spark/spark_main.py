@@ -25,15 +25,16 @@ S3_BUCKET = 'emr-related-files'
 logger = LoggingController()
 logger.s3_bucket = S3_BUCKET
 
-sc = SparkContext(appName="App")
-sc.setLogLevel('WARN') #Get rid of all the junk in output
-sqlContext = SQLContext(sc)
 spark = SparkSession.builder \
         .appName("App") \
+        .config('spark.executor.cores','64') \
         .getOrCreate()
+        # .master("local[*]") \
+        # .config('spark.cores.max','16')
         #.master("local") \
         # .config("spark.some.config.option", "some-value") \
 
+spark.sparkContext.setLogLevel('WARN') #Get rid of all the junk in output
 
 Y            = 'y'
 ID_VAR       = 'ID'
@@ -44,8 +45,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 'X315','X29','X127','X236','X115','X383','X152','X151','X351','X327','X77','X104',\
 'X267','X95','X142']
 #Load data from s3
-train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/train.csv')
-test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/test.csv')
+train = spark.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/train.csv')
+test = spark.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/test.csv')
 #this needs to be done for h2o glm.predict() bug (which needs same number of columns)
 test = test.withColumn(Y,test[ID_VAR])
 
@@ -60,10 +61,11 @@ train = train1.join(train,ID_VAR,'inner')
 # print('VALID DATA')
 # valid.show(2)
 
+#workdaround for h2o predict
 test1 = test.select(ID_VAR,Y)
 test2 = test.drop(Y)
 test = test1.join(test2,ID_VAR,'inner')
-test.show(2)
+
 
 original_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark')
 
@@ -116,15 +118,18 @@ encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],fram
 #                 DONE WITH PREPROCESSING - START TRAINING                     #
 ################################################################################
 import h2o
-h2o.init(nthreads = -1)                                      #Make sure its using all cores in cluster
 h2o.show_progress()                                          # turn on progress bars
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.grid.grid_search import H2OGridSearch               # grid search
-from pysparkling import *
 import matplotlib
 matplotlib.use('Agg')                                       #Need this if running matplot on a server w/o display
-hc = H2OContext.getOrCreate(spark)
+from pysparkling import *
+
+conf = H2OConf(spark=spark)
+conf.nthreads = -1
+hc = H2OContext.getOrCreate(spark,conf)
+
 
 print('Making h2o frames...')
 trainHF = hc.as_h2o_frame(train, "trainTable")
