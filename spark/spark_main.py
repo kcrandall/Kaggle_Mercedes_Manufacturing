@@ -169,8 +169,7 @@ def glm_grid(X, y, train, valid, should_submit = False):
 
     alpha_opts = [0.01, 0.25, 0.5, 0.99] # always keep some L2
     family = ["gaussian", "binomial", "quasibinomial", "multinomial", "poisson", "gamma", "tweedie"]
-    hyper_parameters = {"alpha":alpha_opts,
-                        'family':family
+    hyper_parameters = {"alpha":alpha_opts
                         }
 
     # initialize grid search
