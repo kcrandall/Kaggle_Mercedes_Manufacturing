@@ -55,10 +55,15 @@ test = test.withColumn(Y,test[ID_VAR])
 (train1,valid1) = train.select(ID_VAR).randomSplit([0.7,0.3], seed=123)
 valid = valid1.join(train, ID_VAR,'inner')
 train = train1.join(train,ID_VAR,'inner')
-print('TRAIN DATA')
-train.show(2)
-print('VALID DATA')
-valid.show(2)
+# print('TRAIN DATA')
+# train.show(2)
+# print('VALID DATA')
+# valid.show(2)
+
+test1 = test.select(ID_VAR,Y)
+test2 = test.drop(Y)
+test = test1.join(test2,ID_VAR,'inner')
+test.show(2)
 
 original_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark')
 
@@ -83,12 +88,12 @@ for i, df in enumerate(training_df_list):
     valid = valid.join(valid_df_list[i],ID_VAR,'inner')
     test = test.join(test_df_list[i],ID_VAR,'inner')
 
-print('TRAIN DATA')
-train.show(2)
-print('VALID DATA')
-valid.show(2)
-print('TEST DATA')
-test.show(2)
+# print('TRAIN DATA')
+# train.show(2)
+# print('VALID DATA')
+# valid.show(2)
+# print('TEST DATA')
+# test.show(2)
 
 print('Done encoding.')
 
@@ -100,7 +105,6 @@ for i, v in enumerate(MOST_IMPORTANT_VARS_ORDERD):
     if v in cats:
         MOST_IMPORTANT_VARS_ORDERD[i] = v + '_Tencode'
 
-print(MOST_IMPORTANT_VARS_ORDERD)
 
 print('Combining features....')
 (train, valid, test) = feature_combiner(train, test, MOST_IMPORTANT_VARS_ORDERD, valid_frame = valid, frame_type='spark')
@@ -115,6 +119,7 @@ import h2o
 h2o.init(nthreads = -1)                                      #Make sure its using all cores in cluster
 h2o.show_progress()                                          # turn on progress bars
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
+from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.grid.grid_search import H2OGridSearch               # grid search
 from pysparkling import *
 import matplotlib
@@ -125,16 +130,6 @@ print('Making h2o frames...')
 trainHF = hc.as_h2o_frame(train, "trainTable")
 validHF = hc.as_h2o_frame(valid, "validTable")
 testHF = hc.as_h2o_frame(test, "testTable")
-# trainHF.describe()
-# validHF.describe()
-# testHF.describe()
-print(trainHF.col_names)
-print()
-print(trainHF.ncol)
-print('---------------------------------------------------------------')
-print()
-print(testHF.col_names)
-print(testHF.ncol)
 print('Done making h2o frames.')
 
 logger.log_string("Train Summary:")
@@ -147,7 +142,22 @@ logger.log_string("Cols:{}".format(trainHF.ncol))
 base_train, stack_train = trainHF.split_frame([0.5], seed=12345)
 base_valid, stack_valid = validHF.split_frame([0.5], seed=12345)
 
-def glm_grid(X, y, train, valid):
+# def upload_submission(sub,predict_column='predict'):
+#     # create time stamp
+#     import re
+#     import time
+#     time_stamp = re.sub('[: ]', '_', time.asctime())
+#
+#     # save file for submission
+#     # sub.columns = [ID_VAR, Y]
+#     sub_fname = 'Submission_'+str(time_stamp) + '.csv'
+#     # h2o.download_csv(sub, 's3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
+#
+#     spark_sub_frame = hc.as_spark_frame(sub)
+#
+#     spark_sub_frame.select(ID_VAR,predict_column).coalesce(1).write.option("header","true").csv('s3n://'+S3_BUCKET+'/Kaggle_Submissions/Mercedes/' +sub_fname)
+
+def glm_grid(X, y, train, valid, should_submit = False):
     """ Wrapper function for penalized GLM with alpha and lambda search.
 
     :param X: List of inputs.
@@ -158,7 +168,10 @@ def glm_grid(X, y, train, valid):
     """
 
     alpha_opts = [0.01, 0.25, 0.5, 0.99] # always keep some L2
-    hyper_parameters = {"alpha":alpha_opts}
+    family = ["gaussian", "binomial", "quasibinomial", "multinomial", "poisson", "gamma", "tweedie"]
+    hyper_parameters = {"alpha":alpha_opts,
+                        'family':family
+                        }
 
     # initialize grid search
     grid = H2OGridSearch(
@@ -179,8 +192,14 @@ def glm_grid(X, y, train, valid):
 
     best = grid.get_grid()[0]
     print(best)
-
+    # if should_submit:
+    #     sub_frame = testHF[ID_VAR].cbind(best.predict(testHF))
+    #     print(sub_frame.col_names)
+    #     print('Submission frame preview:')
+    #     print(sub_frame[0:10, [ID_VAR, 'predict']])
+    #     upload_submission(sub_frame,'predict')
     # plot top frame values
+    print('yhat_frame')
     yhat_frame = valid.cbind(best.predict(valid))
     print(yhat_frame[0:10, [y, 'predict']])
 
@@ -194,6 +213,67 @@ def glm_grid(X, y, train, valid):
 
     # select best model
     return best
+def neural_net_grid(X, y, train, valid):
+    # define random grid search parameters
+    hyper_parameters = {'hidden': [[170, 320], [80, 190], [320, 160, 80], [100], [50, 50, 50, 50]],
+                        'l1':[s/1e4 for s in range(0, 1000, 100)],
+                        'l2':[s/1e5 for s in range(0, 1000, 100)],
+                        'input_dropout_ratio':[s/1e2 for s in range(0, 20, 2)]}
+
+    # define search strategy
+    search_criteria = {'strategy':'RandomDiscrete',
+                       'max_models':100,
+                       'max_runtime_secs':60*60*2,  #2 hours
+                       }
+
+    # initialize grid search
+    gsearch = H2OGridSearch(H2ODeepLearningEstimator,
+                            hyper_params=hyper_parameters,
+                            search_criteria=search_criteria)
+
+    # execute training w/ grid search
+    gsearch.train(x=X,
+                  y=y,
+                  training_frame=train,
+                  validation_frame=valid,
+                  activation='TanhWithDropout',
+                  epochs=2000,
+                  stopping_rounds=20,
+                  sparse=True, # handles data w/ many zeros more efficiently
+                  ignore_const_cols=True,
+                  adaptive_rate=True)
+    best_model = gsearch.get_grid()[0]
+
+    return best_model
+
+def gboosting_grid(X, y, train, valid):
+    # define random grid search parameters
+    hyper_parameters = {'ntrees':list(range(0, 500, 50)),
+                        'max_depth':list(range(0, 20, 2)),
+                        'sample_rate':[s/float(10) for s in range(1, 11)],
+                        'col_sample_rate':[s/float(10) for s in range(1, 11)]}
+
+    # define search strategy
+    search_criteria = {'strategy':'RandomDiscrete',
+                       'max_models':100,
+                       'max_runtime_secs':60*60*2,  #2 hours
+                       }
+
+    # initialize grid search
+    gsearch = H2OGridSearch(H2OGradientBoostingEstimator,
+                            hyper_params=hyper_parameters,
+                            search_criteria=search_criteria)
+
+    # execute training w/ grid search
+    gsearch.train(x=X,
+                  y=y,
+                  training_frame=train,
+                  validation_frame=valid)
+
+    best_model = gsearch.get_grid()[0]
+
+    return best_model
+
 print('Training..')
 logger.log_string('glm0')
 glm0 = glm_grid(original_nums, Y, base_train, base_valid)
@@ -201,6 +281,22 @@ logger.log_string('glm1')
 glm1 = glm_grid(encoded_nums, Y, base_train, base_valid)
 logger.log_string('glm2')
 glm2 = glm_grid(encoded_combined_nums, Y, base_train, base_valid)
+
+logger.log_string('rnn0')
+rnn0 = neural_net_grid(original_nums, Y, base_train, base_valid)
+logger.log_string('rnn1')
+rnn1 = neural_net_grid(encoded_nums, Y, base_train, base_valid)
+logger.log_string('rnn2')
+rnn2 = neural_net_grid(encoded_combined_nums, Y, base_train, base_valid)
+
+logger.log_string('gbm0')
+gbm0 = gboosting_grid(original_nums, Y, base_train, base_valid)
+logger.log_string('gbm1')
+gbm1 = gboosting_grid(encoded_nums, Y, base_train, base_valid)
+logger.log_string('gbm2')
+gbm2 = gboosting_grid(encoded_combined_nums, Y, base_train, base_valid)
+
+
 print('DONE training.')
 
 
@@ -211,15 +307,40 @@ stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
 stack_train = stack_train.cbind(glm2.predict(stack_train))
 stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
 
+
+stack_train = stack_train.cbind(rnn0.predict(stack_train))
+stack_valid = stack_valid.cbind(rnn0.predict(stack_valid))
+stack_train = stack_train.cbind(rnn1.predict(stack_train))
+stack_valid = stack_valid.cbind(rnn1.predict(stack_valid))
+stack_train = stack_train.cbind(rnn2.predict(stack_train))
+stack_valid = stack_valid.cbind(rnn2.predict(stack_valid))
+
+stack_train = stack_train.cbind(gbm0.predict(stack_train))
+stack_valid = stack_valid.cbind(gbm0.predict(stack_valid))
+stack_train = stack_train.cbind(gbm1.predict(stack_train))
+stack_valid = stack_valid.cbind(gbm1.predict(stack_valid))
+stack_train = stack_train.cbind(gbm2.predict(stack_train))
+stack_valid = stack_valid.cbind(gbm2.predict(stack_valid))
+
+
 testHF = testHF.cbind(glm0.predict(testHF))
 testHF = testHF.cbind(glm1.predict(testHF))
 testHF = testHF.cbind(glm2.predict(testHF))
+testHF = testHF.cbind(rnn0.predict(testHF))
+testHF = testHF.cbind(rnn1.predict(testHF))
+testHF = testHF.cbind(rnn2.predict(testHF))
+testHF = testHF.cbind(gbm0.predict(testHF))
+testHF = testHF.cbind(gbm1.predict(testHF))
+testHF = testHF.cbind(gbm2.predict(testHF))
+
 logger.log_string('glm3')
-glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
+# glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0','predict1'], Y, stack_train, stack_valid, should_submit=True)
+rnn = neural_net_grid(MOST_IMPORTANT_VARS_ORDERD + ['predict', 'predict0', 'predict1','predict2', 'predict3', 'predict4','predict5', 'predict6', 'predict7'], Y, stack_train, stack_valid)
 
 
-sub = testHF[ID_VAR].cbind(glm3.predict(testHF))
-sub['predict'] = sub['predict'].exp()
+
+
+sub = testHF[ID_VAR].cbind(rnn.predict(testHF))
 print(sub.head())
 
 
@@ -235,4 +356,4 @@ sub_fname = 'Submission_'+str(time_stamp) + '.csv'
 
 spark_sub_frame = hc.as_spark_frame(sub)
 
-spark_sub_frame.coalesce(1).write.option("header","true").csv('s3n://'+S3_BUCKET+'/kaggle_submissions/Mercedes/' +sub_fname)
+spark_sub_frame.select(ID_VAR,Y).coalesce(1).write.option("header","true").csv('s3n://'+S3_BUCKET+'/Kaggle_Submissions/Mercedes/' +sub_fname)
