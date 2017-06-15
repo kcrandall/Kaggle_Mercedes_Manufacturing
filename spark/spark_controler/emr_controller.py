@@ -294,14 +294,14 @@ class EMRController(object):
                     }
                   ]
             },
-            {
-                "Classification": "spark",
-                "Properties": {
-                  "maximizeResourceAllocation": "true",
-                  "dynamicAllocation": "false",
-
-                }
-            }
+            # {
+            #     "Classification": "spark",
+            #     "Properties": {
+            #       "maximizeResourceAllocation": "true",
+            #       "dynamicAllocation": "false",
+            #
+            #     }
+            # }
             ],
             VisibleToAllUsers=True,
             JobFlowRole='EMR_EC2_DefaultRole',
