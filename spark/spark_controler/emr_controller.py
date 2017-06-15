@@ -293,6 +293,14 @@ class EMRController(object):
                       ]
                     }
                   ]
+            },
+            {
+                "Classification": "spark",
+                "Properties": {
+                  "maximizeResourceAllocation": "true",
+                  "dynamicAllocation": "false",
+
+                }
             }
             ],
             VisibleToAllUsers=True,

@@ -17,10 +17,9 @@ sys.path.append('..')
 from get_type_lists import get_type_lists
 from target_encoder import target_encoder
 from feature_combiner import feature_combiner
-sys.path.remove('..')
-sys.path.remove('..')
-
 from logging_lib.LoggingController import LoggingController
+sys.path.remove('..')
+sys.path.remove('..')
 
 #Define your s3 bucket to load and store data
 S3_BUCKET = 'emr-related-files'
@@ -29,15 +28,16 @@ S3_BUCKET = 'emr-related-files'
 logger = LoggingController()
 logger.s3_bucket = S3_BUCKET
 
-sc = SparkContext(appName="App")
-sc.setLogLevel('WARN') #Get rid of all the junk in output
-sqlContext = SQLContext(sc)
+#.config('spark.executor.cores','6') \
 spark = SparkSession.builder \
         .appName("App") \
         .getOrCreate()
+        # .master("local[*]") \
+        # .config('spark.cores.max','16')
         #.master("local") \
         # .config("spark.some.config.option", "some-value") \
 
+spark.sparkContext.setLogLevel('WARN') #Get rid of all the junk in output
 
 Y            = 'y'
 ID_VAR       = 'ID'
@@ -48,8 +48,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 'X315','X29','X127','X236','X115','X383','X152','X151','X351','X327','X77','X104',\
 'X267','X95','X142']
 #Load data from s3
-train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/train.csv')
-test = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://'+S3_BUCKET+'/test.csv')
+train = spark.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/train.csv')
+test = spark.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('s3n://emr-related-files/test.csv')
 #this needs to be done for h2o glm.predict() bug (which needs same number of columns)
 test = test.withColumn(Y,test[ID_VAR])
 
@@ -64,10 +64,11 @@ train = train1.join(train,ID_VAR,'inner')
 # print('VALID DATA')
 # valid.show(2)
 
+#workdaround for h2o predict
 test1 = test.select(ID_VAR,Y)
 test2 = test.drop(Y)
 test = test1.join(test2,ID_VAR,'inner')
-test.show(2)
+
 
 original_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark')
 
@@ -120,15 +121,18 @@ encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],fram
 #                 DONE WITH PREPROCESSING - START TRAINING                     #
 ################################################################################
 import h2o
-h2o.init(nthreads = -1)                                      #Make sure its using all cores in cluster
 h2o.show_progress()                                          # turn on progress bars
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.grid.grid_search import H2OGridSearch               # grid search
-from pysparkling import *
 import matplotlib
 matplotlib.use('Agg')                                       #Need this if running matplot on a server w/o display
-hc = H2OContext.getOrCreate(spark)
+from pysparkling import *
+
+conf = H2OConf(spark=spark)
+conf.nthreads = -1
+hc = H2OContext.getOrCreate(spark,conf)
+
 
 print('Making h2o frames...')
 trainHF = hc.as_h2o_frame(train, "trainTable")
@@ -173,7 +177,7 @@ def glm_grid(X, y, train, valid, should_submit = False):
 
     alpha_opts = [0.01, 0.25, 0.5, 0.99] # always keep some L2
     family = ["gaussian", "binomial", "quasibinomial", "multinomial", "poisson", "gamma", "tweedie"]
-    hyper_parameters = {"alpha":alpha_opts,
+    hyper_parameters = {"alpha":alpha_opts
                         }
 
     # initialize grid search
@@ -285,19 +289,19 @@ glm1 = glm_grid(encoded_nums, Y, base_train, base_valid)
 logger.log_string('glm2')
 glm2 = glm_grid(encoded_combined_nums, Y, base_train, base_valid)
 
-logger.log_string('rnn0')
-rnn0 = neural_net_grid(original_nums, Y, base_train, base_valid)
-logger.log_string('rnn1')
-rnn1 = neural_net_grid(encoded_nums, Y, base_train, base_valid)
-logger.log_string('rnn2')
-rnn2 = neural_net_grid(encoded_combined_nums, Y, base_train, base_valid)
-
-logger.log_string('gbm0')
-gbm0 = gboosting_grid(original_nums, Y, base_train, base_valid)
-logger.log_string('gbm1')
-gbm1 = gboosting_grid(encoded_nums, Y, base_train, base_valid)
-logger.log_string('gbm2')
-gbm2 = gboosting_grid(encoded_combined_nums, Y, base_train, base_valid)
+# logger.log_string('rnn0')
+# rnn0 = neural_net_grid(original_nums, Y, base_train, base_valid)
+# logger.log_string('rnn1')
+# rnn1 = neural_net_grid(encoded_nums, Y, base_train, base_valid)
+# logger.log_string('rnn2')
+# rnn2 = neural_net_grid(encoded_combined_nums, Y, base_train, base_valid)
+#
+# logger.log_string('gbm0')
+# gbm0 = gboosting_grid(original_nums, Y, base_train, base_valid)
+# logger.log_string('gbm1')
+# gbm1 = gboosting_grid(encoded_nums, Y, base_train, base_valid)
+# logger.log_string('gbm2')
+# gbm2 = gboosting_grid(encoded_combined_nums, Y, base_train, base_valid)
 print('DONE training.')
 
 
@@ -309,34 +313,34 @@ stack_train = stack_train.cbind(glm2.predict(stack_train))
 stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
 
 
-stack_train = stack_train.cbind(rnn0.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn0.predict(stack_valid))
-stack_train = stack_train.cbind(rnn1.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn1.predict(stack_valid))
-stack_train = stack_train.cbind(rnn2.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn2.predict(stack_valid))
-
-stack_train = stack_train.cbind(gbm0.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm0.predict(stack_valid))
-stack_train = stack_train.cbind(gbm1.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm1.predict(stack_valid))
-stack_train = stack_train.cbind(gbm2.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm2.predict(stack_valid))
+# stack_train = stack_train.cbind(rnn0.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn0.predict(stack_valid))
+# stack_train = stack_train.cbind(rnn1.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn1.predict(stack_valid))
+# stack_train = stack_train.cbind(rnn2.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn2.predict(stack_valid))
+#
+# stack_train = stack_train.cbind(gbm0.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm0.predict(stack_valid))
+# stack_train = stack_train.cbind(gbm1.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm1.predict(stack_valid))
+# stack_train = stack_train.cbind(gbm2.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm2.predict(stack_valid))
 
 
 testHF = testHF.cbind(glm0.predict(testHF))
 testHF = testHF.cbind(glm1.predict(testHF))
 testHF = testHF.cbind(glm2.predict(testHF))
-testHF = testHF.cbind(rnn0.predict(testHF))
-testHF = testHF.cbind(rnn1.predict(testHF))
-testHF = testHF.cbind(rnn2.predict(testHF))
-testHF = testHF.cbind(gbm0.predict(testHF))
-testHF = testHF.cbind(gbm1.predict(testHF))
-testHF = testHF.cbind(gbm2.predict(testHF))
+# testHF = testHF.cbind(rnn0.predict(testHF))
+# testHF = testHF.cbind(rnn1.predict(testHF))
+# testHF = testHF.cbind(rnn2.predict(testHF))
+# testHF = testHF.cbind(gbm0.predict(testHF))
+# testHF = testHF.cbind(gbm1.predict(testHF))
+# testHF = testHF.cbind(gbm2.predict(testHF))
 
 logger.log_string('glm3')
-# glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0','predict1'], Y, stack_train, stack_valid, should_submit=True)
-rnn = neural_net_grid(MOST_IMPORTANT_VARS_ORDERD + ['predict', 'predict0', 'predict1','predict2', 'predict3', 'predict4','predict5', 'predict6', 'predict7'], Y, stack_train, stack_valid)
+glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0','predict1'], Y, stack_train, stack_valid, should_submit=True)
+# rnn = neural_net_grid(MOST_IMPORTANT_VARS_ORDERD + ['predict', 'predict0', 'predict1'], Y, stack_train, stack_valid)
 
 
 

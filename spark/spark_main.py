@@ -25,9 +25,9 @@ S3_BUCKET = 'emr-related-files'
 logger = LoggingController()
 logger.s3_bucket = S3_BUCKET
 
+#.config('spark.executor.cores','6') \
 spark = SparkSession.builder \
         .appName("App") \
-        .config('spark.executor.cores','64') \
         .getOrCreate()
         # .master("local[*]") \
         # .config('spark.cores.max','16')
