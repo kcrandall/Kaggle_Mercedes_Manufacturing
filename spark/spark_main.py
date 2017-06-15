@@ -121,6 +121,8 @@ import h2o
 h2o.show_progress()                                          # turn on progress bars
 from h2o.estimators.glm import H2OGeneralizedLinearEstimator # import GLM models
 from h2o.estimators.deeplearning import H2ODeepLearningEstimator
+from h2o.estimators.gbm import H2OGradientBoostingEstimator
+from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.grid.grid_search import H2OGridSearch               # grid search
 import matplotlib
 matplotlib.use('Agg')                                       #Need this if running matplot on a server w/o display

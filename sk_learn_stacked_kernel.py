@@ -5,7 +5,10 @@
 # https://www.kaggle.com/hakeem/stacked-then-averaged-models-0-5697/code
 # https://www.kaggle.com/c/mercedes-benz-greener-manufacturing
 
+
+import os
 import numpy as np
+#used scikit 0.18
 from sklearn.base import BaseEstimator,TransformerMixin, ClassifierMixin
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
@@ -44,9 +47,8 @@ class StackingEstimator(BaseEstimator, TransformerMixin):
 
         return X_transformed
 
-
-train = pd.read_csv('../input/train.csv')
-test = pd.read_csv('../input/test.csv')
+train = pd.read_csv(os.path.dirname( __file__ )+'/data/train.csv')
+test = pd.read_csv(os.path.dirname( __file__ )+'/data/test.csv')
 
 for c in train.columns:
     if train[c].dtype == 'object':

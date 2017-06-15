@@ -18,7 +18,7 @@ logger.addHandler(ch)
 
 class EMRController(object):
     def __init__(self, profile_name = 'default', aws_access_key = False, aws_secret_access_key = False, region_name = 'us-east-1',
-                 cluster_name = 'Spark-Cluster', instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
+                 cluster_name = 'Spark-Cluster', worker_instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
                  key_name = 'EMR_Key', subnet_id = 'subnet-50c2a327', software_version = 'emr-5.5.0', s3_bucket = 'emr-related-files', path_script =os.path.dirname( __file__ ),
                  additional_job_args=['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false'] ):
         self.init_datetime_string = self.get_datetime_str()                     #Used to create a s3 directory so multiple scripts don't overwrite the same files
@@ -27,7 +27,7 @@ class EMRController(object):
         self.aws_secret_access_key = aws_secret_access_key                      #If you don't wan to use a credential from the AWS CLI on your machine set this
         self.region_name = region_name                                          #AWS region to run the cluster in i.e. 'us-east-1'
         self.cluster_name = cluster_name+'_'+self.init_datetime_string          # Application Name on EMR
-        self.instance_count = instance_count                                    #Total number of instances
+        self.worker_instance_count = worker_instance_count                      #Total number of worker instances
         self.master_instance_type = master_instance_type                        # EC2 intance type for the master node(s)
         self.slave_instance_type = slave_instance_type                          # EC2 instance type for the worker nodes
         self.key_name = key_name                                                #Your ssh key used to ssh into the master node. i.e. 'My_KEY'
@@ -67,151 +67,151 @@ class EMRController(object):
             LogUri='s3://'+self.s3_bucket+'/logs',
             ReleaseLabel=self.software_version,
             Instances={
-                'MasterInstanceType': self.master_instance_type,
-                'SlaveInstanceType': self.slave_instance_type,
-                'InstanceCount': self.instance_count,
-                # 'InstanceGroups': [
-                #     {
-                #         'Name': 'string',
-                #         'Market': 'ON_DEMAND',#|'SPOT'
-                #         'InstanceRole': 'MASTER',#|'CORE'|'TASK'
-                #         # 'BidPrice': 'string',
-                #         'InstanceType': 'g2.2xlarge',
-                #         'InstanceCount': 1,
-                #         # 'Configurations': [
-                #         #     {
-                #         #         'Classification': 'string',
-                #         #         'Configurations': {'... recursive ...'},
-                #         #         'Properties': {
-                #         #             'string': 'string'
-                #         #         }
-                #         #     },
-                #         # ],
-                #         # 'EbsConfiguration': {
-                #         #     'EbsBlockDeviceConfigs': [
-                #         #         {
-                #         #             'VolumeSpecification': {
-                #         #                 'VolumeType': 'standard',#gp2, io1, standard
-                #         #                 # 'Iops': 123,
-                #         #                 'SizeInGB': 100
-                #         #             },
-                #         #             'VolumesPerInstance': 1
-                #         #         },
-                #         #     ],
-                #         #     'EbsOptimized': True#|False
-                #         # },
-                #         # 'AutoScalingPolicy': {
-                #         #     'Constraints': {
-                #         #         'MinCapacity': 123,
-                #         #         'MaxCapacity': 123
-                #         #     },
-                #         #     # 'Rules': [
-                #         #     #     {
-                #         #     #         'Name': 'string',
-                #         #     #         'Description': 'string',
-                #         #     #         'Action': {
-                #         #     #             'Market': 'ON_DEMAND'|'SPOT',
-                #         #     #             'SimpleScalingPolicyConfiguration': {
-                #         #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
-                #         #     #                 'ScalingAdjustment': 123,
-                #         #     #                 'CoolDown': 123
-                #         #     #             }
-                #         #     #         },
-                #         #     #
-                #         #     #         # 'Trigger': {
-                #         #     #         #     'CloudWatchAlarmDefinition': {
-                #         #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
-                #         #     #         #         'EvaluationPeriods': 123,
-                #         #     #         #         'MetricName': 'string',
-                #         #     #         #         'Namespace': 'string',
-                #         #     #         #         'Period': 123,
-                #         #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
-                #         #     #         #         'Threshold': 123.0,
-                #         #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
-                #         #     #         #         'Dimensions': [
-                #         #     #         #             {
-                #         #     #         #                 'Key': 'string',
-                #         #     #         #                 'Value': 'string'
-                #         #     #         #             },
-                #         #     #         #         ]
-                #         #     #         #     }
-                #         #     #         # }
-                #         #     #
-                #         #     #     },
-                #         #     # ]
-                #         # }
-                #     },
-                #     {
-                #         'Name': 'string',
-                #         'Market': 'ON_DEMAND',#|'SPOT'
-                #         'InstanceRole': 'CORE',#|'MASTER'|'TASK'
-                #         # 'BidPrice': 'string',
-                #         'InstanceType': 'g2.2xlarge',
-                #         'InstanceCount': 1,
-                #         # 'Configurations': [
-                #         #     {
-                #         #         'Classification': 'string',
-                #         #         'Configurations': {'... recursive ...'},
-                #         #         'Properties': {
-                #         #             'string': 'string'
-                #         #         }
-                #         #     },
-                #         # ],
-                #         # 'EbsConfiguration': {
-                #         #     'EbsBlockDeviceConfigs': [
-                #         #         {
-                #         #             'VolumeSpecification': {
-                #         #                 'VolumeType': 'standard',#gp2, io1, standard
-                #         #                 # 'Iops': 123,
-                #         #                 'SizeInGB': 100
-                #         #             },
-                #         #             'VolumesPerInstance': 1
-                #         #         },
-                #         #     ],
-                #         #     'EbsOptimized': True#|False
-                #         # },
-                #         # 'AutoScalingPolicy': {
-                #         #     'Constraints': {
-                #         #         'MinCapacity': 123,
-                #         #         'MaxCapacity': 123
-                #         #     },
-                #         #     # 'Rules': [
-                #         #     #     {
-                #         #     #         'Name': 'string',
-                #         #     #         'Description': 'string',
-                #         #     #         'Action': {
-                #         #     #             'Market': 'ON_DEMAND'|'SPOT',
-                #         #     #             'SimpleScalingPolicyConfiguration': {
-                #         #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
-                #         #     #                 'ScalingAdjustment': 123,
-                #         #     #                 'CoolDown': 123
-                #         #     #             }
-                #         #     #         },
-                #         #     #
-                #         #     #         # 'Trigger': {
-                #         #     #         #     'CloudWatchAlarmDefinition': {
-                #         #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
-                #         #     #         #         'EvaluationPeriods': 123,
-                #         #     #         #         'MetricName': 'string',
-                #         #     #         #         'Namespace': 'string',
-                #         #     #         #         'Period': 123,
-                #         #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
-                #         #     #         #         'Threshold': 123.0,
-                #         #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
-                #         #     #         #         'Dimensions': [
-                #         #     #         #             {
-                #         #     #         #                 'Key': 'string',
-                #         #     #         #                 'Value': 'string'
-                #         #     #         #             },
-                #         #     #         #         ]
-                #         #     #         #     }
-                #         #     #         # }
-                #         #     #
-                #         #     #     },
-                #         #     # ]
-                #         # }
-                #     },
-                # ],
+                # 'MasterInstanceType': self.master_instance_type,
+                # 'SlaveInstanceType': self.slave_instance_type,
+                # 'InstanceCount': self.instance_count,
+                'InstanceGroups': [
+                    {
+                        'Name': 'master(s)',
+                        'Market': 'ON_DEMAND',#|'SPOT'
+                        'InstanceRole': 'MASTER',#|'CORE'|'TASK'
+                        # 'BidPrice': 'string',
+                        'InstanceType': self.master_instance_type,
+                        'InstanceCount': 1,
+                        # 'Configurations': [
+                        #     {
+                        #         'Classification': 'string',
+                        #         'Configurations': {'... recursive ...'},
+                        #         'Properties': {
+                        #             'string': 'string'
+                        #         }
+                        #     },
+                        # ],
+                        # 'EbsConfiguration': {
+                        #     'EbsBlockDeviceConfigs': [
+                        #         {
+                        #             'VolumeSpecification': {
+                        #                 'VolumeType': 'standard',#gp2, io1, standard
+                        #                 # 'Iops': 123,
+                        #                 'SizeInGB': 100
+                        #             },
+                        #             'VolumesPerInstance': 1
+                        #         },
+                        #     ],
+                        #     'EbsOptimized': True#|False
+                        # },
+                        # 'AutoScalingPolicy': {
+                        #     'Constraints': {
+                        #         'MinCapacity': 123,
+                        #         'MaxCapacity': 123
+                        #     },
+                        #     # 'Rules': [
+                        #     #     {
+                        #     #         'Name': 'string',
+                        #     #         'Description': 'string',
+                        #     #         'Action': {
+                        #     #             'Market': 'ON_DEMAND'|'SPOT',
+                        #     #             'SimpleScalingPolicyConfiguration': {
+                        #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
+                        #     #                 'ScalingAdjustment': 123,
+                        #     #                 'CoolDown': 123
+                        #     #             }
+                        #     #         },
+                        #     #
+                        #     #         # 'Trigger': {
+                        #     #         #     'CloudWatchAlarmDefinition': {
+                        #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
+                        #     #         #         'EvaluationPeriods': 123,
+                        #     #         #         'MetricName': 'string',
+                        #     #         #         'Namespace': 'string',
+                        #     #         #         'Period': 123,
+                        #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
+                        #     #         #         'Threshold': 123.0,
+                        #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
+                        #     #         #         'Dimensions': [
+                        #     #         #             {
+                        #     #         #                 'Key': 'string',
+                        #     #         #                 'Value': 'string'
+                        #     #         #             },
+                        #     #         #         ]
+                        #     #         #     }
+                        #     #         # }
+                        #     #
+                        #     #     },
+                        #     # ]
+                        # }
+                    },
+                    {
+                        'Name': 'slaves',
+                        'Market': 'ON_DEMAND',#|'SPOT'
+                        'InstanceRole': 'CORE',#|'MASTER'|'TASK'
+                        # 'BidPrice': 'string',
+                        'InstanceType': self.slave_instance_type,
+                        'InstanceCount': self.worker_instance_count,
+                        # 'Configurations': [
+                        #     {
+                        #         'Classification': 'string',
+                        #         'Configurations': {'... recursive ...'},
+                        #         'Properties': {
+                        #             'string': 'string'
+                        #         }
+                        #     },
+                        # ],
+                        # 'EbsConfiguration': {
+                        #     'EbsBlockDeviceConfigs': [
+                        #         {
+                        #             'VolumeSpecification': {
+                        #                 'VolumeType': 'standard',#gp2, io1, standard
+                        #                 # 'Iops': 123,
+                        #                 'SizeInGB': 100
+                        #             },
+                        #             'VolumesPerInstance': 1
+                        #         },
+                        #     ],
+                        #     'EbsOptimized': True#|False
+                        # },
+                        # 'AutoScalingPolicy': {
+                        #     'Constraints': {
+                        #         'MinCapacity': 123,
+                        #         'MaxCapacity': 123
+                        #     },
+                        #     # 'Rules': [
+                        #     #     {
+                        #     #         'Name': 'string',
+                        #     #         'Description': 'string',
+                        #     #         'Action': {
+                        #     #             'Market': 'ON_DEMAND'|'SPOT',
+                        #     #             'SimpleScalingPolicyConfiguration': {
+                        #     #                 'AdjustmentType': 'CHANGE_IN_CAPACITY'|'PERCENT_CHANGE_IN_CAPACITY'|'EXACT_CAPACITY',
+                        #     #                 'ScalingAdjustment': 123,
+                        #     #                 'CoolDown': 123
+                        #     #             }
+                        #     #         },
+                        #     #
+                        #     #         # 'Trigger': {
+                        #     #         #     'CloudWatchAlarmDefinition': {
+                        #     #         #         'ComparisonOperator': 'GREATER_THAN_OR_EQUAL'|'GREATER_THAN'|'LESS_THAN'|'LESS_THAN_OR_EQUAL',
+                        #     #         #         'EvaluationPeriods': 123,
+                        #     #         #         'MetricName': 'string',
+                        #     #         #         'Namespace': 'string',
+                        #     #         #         'Period': 123,
+                        #     #         #         'Statistic': 'SAMPLE_COUNT'|'AVERAGE'|'SUM'|'MINIMUM'|'MAXIMUM',
+                        #     #         #         'Threshold': 123.0,
+                        #     #         #         'Unit': 'NONE'|'SECONDS'|'MICRO_SECONDS'|'MILLI_SECONDS'|'BYTES'|'KILO_BYTES'|'MEGA_BYTES'|'GIGA_BYTES'|'TERA_BYTES'|'BITS'|'KILO_BITS'|'MEGA_BITS'|'GIGA_BITS'|'TERA_BITS'|'PERCENT'|'COUNT'|'BYTES_PER_SECOND'|'KILO_BYTES_PER_SECOND'|'MEGA_BYTES_PER_SECOND'|'GIGA_BYTES_PER_SECOND'|'TERA_BYTES_PER_SECOND'|'BITS_PER_SECOND'|'KILO_BITS_PER_SECOND'|'MEGA_BITS_PER_SECOND'|'GIGA_BITS_PER_SECOND'|'TERA_BITS_PER_SECOND'|'COUNT_PER_SECOND',
+                        #     #         #         'Dimensions': [
+                        #     #         #             {
+                        #     #         #                 'Key': 'string',
+                        #     #         #                 'Value': 'string'
+                        #     #         #             },
+                        #     #         #         ]
+                        #     #         #     }
+                        #     #         # }
+                        #     #
+                        #     #     },
+                        #     # ]
+                        # }
+                    },
+                ],
                 'KeepJobFlowAliveWhenNoSteps': True,
                 'TerminationProtected': False,
                 'Ec2KeyName': self.key_name,
@@ -278,7 +278,7 @@ class EMRController(object):
             #         ]
             #   },
               {
-                  "Classification": "hadoop-env",
+                  "Classification": "hadoop-env", #set environment varaibles in here
                   "Properties": {
 
                   },
@@ -297,11 +297,23 @@ class EMRController(object):
             # {
             #     "Classification": "spark",
             #     "Properties": {
-            #       "maximizeResourceAllocation": "true",
-            #       "dynamicAllocation": "false",
+            #       "maximizeResourceAllocation": "true", #AWS has problems with some instance types with this set (generates wrong spark settings, wtf AWS)
             #
             #     }
-            # }
+            # },
+            {
+              "Classification": "spark-defaults",
+            #   "Properties": {
+            #         "spark.executor.instances": "9",
+            #         "spark.yarn.executor.memoryOverhead": "3072",
+            #         "spark.executor.memory": "18G",
+            #         "spark.yarn.driver.memoryOverhead": "2048",
+            #         "spark.driver.memory": "13G",
+            #         "spark.executor.cores": "5",
+            #         "spark.driver.cores": "3",
+            #         "spark.default.parallelism": "90"
+            #   }
+            }
             ],
             VisibleToAllUsers=True,
             JobFlowRole='EMR_EC2_DefaultRole',
@@ -437,7 +449,57 @@ class EMRController(object):
 
 
 
+    def get_maximum_resource_allocation_properties(self,_master_memory,_master_cores,_memory_per_workder_node_gb,_cores_per_worker_node,_executors_per_node = 1,_number_of_worker_nodes=self.worker_instance_count):
+        """
+        Will calculate spark configuration settings that maximize resource
+        allocation within the cluster. Useful when you know you are only going
+        to run one job at a time or are setting dynamicAllocation to false.
 
+        :return: a dictonary of the properties to pass to boto3/AWS/spark
+        """
+
+        import math
+        #Set by user
+        master_memory = 16
+        master_cores = 4
+        number_of_worker_nodes = _number_of_worker_nodes
+        memory_per_workder_node_gb = 64
+        cores_per_worker_node = 16
+        executors_per_node = 3
+
+        #Change with caution
+        memory_overhead_coefficient = 0.1
+        executor_memory_upper_bound_gb = memory_per_workder_node_gb
+        executor_core_upper_bound = 5
+        os_reserved_cores = 1
+        os_reserved_memory_gb = 1
+        parallelism_per_core = 2
+
+        #Calculations from previous variables
+        availible_master_memory = master_memory - os_reserved_memory_gb
+        availible_master_cores = master_cores - os_reserved_cores
+        availible_workder_memory = memory_per_workder_node_gb - os_reserved_memory_gb
+        availible_workder_cores = cores_per_worker_node - os_reserved_cores
+
+        total_memory_per_executor = math.floor(availible_workder_memory/executors_per_node)
+        overhead_memory_per_executor = math.ceiling(total_memory_per_executor*memory_overhead_coefficient)
+        memory_per_executor = total_memory_per_executor - overhead_memory_per_executor
+        cores_per_executor = math.floor(availible_workder_cores/executors_per_node)
+        unused_memory_per_node = availible_workder_memory -(executors_per_node*total_memory_per_executor)
+        unused_cores_per_node = availible_workder_cores - (executors_per_node*cores_per_executor)
+
+        spark_executor_instances = number_of_worker_nodes*executors_per_node
+        spark_yarn_driver_memoryOverhead = math.ceiling(availible_master_memory*memory_overhead_coefficient)*1024
+        return {
+            "spark.executor.instances": str(spark_executor_instances),
+            "spark.yarn.executor.memoryOverhead":str(overhead_memory_per_executor*1024),
+            "spark.executor.memory": str(memory_per_executor) +'G',
+            "spark.yarn.driver.memoryOverhead":str(spark_yarn_driver_memoryOverhead),
+            "spark.driver.memory":str(min(availible_master_memory-(spark_yarn_driver_memoryOverhead/1024),executor_memory_upper_bound_gb-(executor_memory_upper_bound_gb*memory_overhead_coefficient) ))+'G',
+            "spark.executor.cores": str(cores_per_executor),
+            "spark.driver.cores": str(min(availible_master_cores,executor_core_upper_bound)),
+            "spark.default.parallelism":str(spark_executor_instances*cores_per_executor*parallelism_per_core)
+        }
 
     def get_datetime_str(self):
         """
