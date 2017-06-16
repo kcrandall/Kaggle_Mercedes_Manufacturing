@@ -1,7 +1,7 @@
 import os
 import sys
 
-from spark_controler.emr_controller import EMRController
+from spark_controler.emr_controller import *
 
 deployer = EMRController()
 deployer.profile_name = 'default'
@@ -12,11 +12,12 @@ deployer.master_instance_type = 'm4.xlarge'
 deployer.slave_instance_type = 'm4.xlarge'
 deployer.worker_instance_count = 2
 deployer.set_maxmimum_allocation = True
+deployer.number_of_executors_per_node = 2
 deployer.run('create')
 
 # deployer.job_flow_id = 'j-2X3GNHZ4AM7M1'
 deployer.path_script = os.path.dirname( __file__ )
-deployer.file_to_run = 'sspark_main.py'
+deployer.file_to_run = 'spark_main.py'
 # Use this if you want to spark submit on the server manually
 # spark-submit --packages ai.h2o:sparkling-water-core_2.11:2.1.9 --conf spark.dynamicAllocation.enabled=false
 deployer.additional_job_args = ['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.9', '--conf', 'spark.dynamicAllocation.enabled=false']

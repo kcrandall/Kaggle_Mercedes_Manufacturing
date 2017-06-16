@@ -7,7 +7,7 @@ from datetime import datetime
 import tarfile
 # https://medium.com/@datitran/quickstart-pyspark-with-anaconda-on-aws-660252b88c9a
 
-from ec2_instance_data_dict import ec2_data_dict
+from spark_controler.ec2_instance_data_dict import ec2_data_dict
 
 
 logger = logging.getLogger(__name__)
@@ -460,12 +460,12 @@ class EMRController(object):
 
         import math
         #Set by user
-        master_memory = _master_memory
-        master_cores = _master_cores
-        number_of_worker_nodes = _number_of_worker_nodes
-        memory_per_workder_node_gb = _memory_per_workder_node_gb
-        cores_per_worker_node = _cores_per_worker_node
-        executors_per_node = _executors_per_node
+        master_memory = int(_master_memory)
+        master_cores = int(_master_cores)
+        number_of_worker_nodes = int(_number_of_worker_nodes)
+        memory_per_workder_node_gb = int(_memory_per_workder_node_gb)
+        cores_per_worker_node = int(_cores_per_worker_node)
+        executors_per_node = int(_executors_per_node)
 
         #Change with caution
         memory_overhead_coefficient = 0.1
@@ -482,14 +482,14 @@ class EMRController(object):
         availible_workder_cores = cores_per_worker_node - os_reserved_cores
 
         total_memory_per_executor = math.floor(availible_workder_memory/executors_per_node)
-        overhead_memory_per_executor = math.ceiling(total_memory_per_executor*memory_overhead_coefficient)
+        overhead_memory_per_executor = math.ceil(total_memory_per_executor*memory_overhead_coefficient)
         memory_per_executor = total_memory_per_executor - overhead_memory_per_executor
         cores_per_executor = math.floor(availible_workder_cores/executors_per_node)
         unused_memory_per_node = availible_workder_memory -(executors_per_node*total_memory_per_executor)
         unused_cores_per_node = availible_workder_cores - (executors_per_node*cores_per_executor)
 
         spark_executor_instances = number_of_worker_nodes*executors_per_node
-        spark_yarn_driver_memoryOverhead = math.ceiling(availible_master_memory*memory_overhead_coefficient)*1024
+        spark_yarn_driver_memoryOverhead = math.ceil(availible_master_memory*memory_overhead_coefficient)*1024
         return {
             "spark.executor.instances": str(spark_executor_instances),
             "spark.yarn.executor.memoryOverhead":str(overhead_memory_per_executor*1024),
@@ -579,7 +579,7 @@ class EMRController(object):
                 worker_memory = ec2_data_dict[self.master_instance_type]['memory']
                 worker_cores = ec2_data_dict[self.master_instance_type]['cores']
 
-                spark_properties = self.get_maximum_resource_allocation_properties(_master_memory=master_memory,_master_cores=master_cores,_memory_per_workder_node_gb=worker_memory,_cores_per_worker_node=worker_cores,number_of_worker_nodes=self.worker_instance_count,_executors_per_node=self.number_of_executors_per_node)
+                spark_properties = self.get_maximum_resource_allocation_properties(_master_memory=master_memory,_master_cores=master_cores,_memory_per_workder_node_gb=worker_memory,_cores_per_worker_node=worker_cores,_number_of_worker_nodes=self.worker_instance_count,_executors_per_node=self.number_of_executors_per_node)
 
 
             emr_response = self.load_cluster()
