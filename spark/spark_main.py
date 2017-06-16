@@ -124,6 +124,9 @@ from h2o.estimators.deeplearning import H2ODeepLearningEstimator
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
 from h2o.estimators.random_forest import H2ORandomForestEstimator
 from h2o.grid.grid_search import H2OGridSearch               # grid search
+from h2o.estimators.xgboost import H2OXGBoostEstimator
+from h2o.estimators.stackedensemble import H2OStackedEnsembleEstimator
+import xgboost as xgb
 import matplotlib
 matplotlib.use('Agg')                                       #Need this if running matplot on a server w/o display
 from pysparkling import *
@@ -280,6 +283,24 @@ def gboosting_grid(X, y, train, valid):
 
     return best_model
 
+
+h2o_xgb_model = H2OXGBoostEstimator(
+    ntrees = 10000,
+    learn_rate = 0.005,
+    sample_rate = 0.1,
+    col_sample_rate = 0.8,
+    max_depth = 5,
+    nfolds = 3,
+    keep_cross_validation_predictions=True,
+    stopping_rounds = 10,
+    seed = 12345)
+
+# execute training
+h2o_xgb_model.train(x=encoded_combined_nums,
+                    y=Y,
+                    training_frame=trainHF,
+                    validation_frame=validHF)
+
 print('Training..')
 logger.log_string('glm0')
 glm0 = glm_grid(original_nums, Y, base_train, base_valid)
@@ -287,20 +308,20 @@ logger.log_string('glm1')
 glm1 = glm_grid(encoded_nums, Y, base_train, base_valid)
 logger.log_string('glm2')
 glm2 = glm_grid(encoded_combined_nums, Y, base_train, base_valid)
-
-logger.log_string('rnn0')
-rnn0 = neural_net_grid(original_nums, Y, base_train, base_valid)
-logger.log_string('rnn1')
-rnn1 = neural_net_grid(encoded_nums, Y, base_train, base_valid)
-logger.log_string('rnn2')
-rnn2 = neural_net_grid(encoded_combined_nums, Y, base_train, base_valid)
-
-logger.log_string('gbm0')
-gbm0 = gboosting_grid(original_nums, Y, base_train, base_valid)
-logger.log_string('gbm1')
-gbm1 = gboosting_grid(encoded_nums, Y, base_train, base_valid)
-logger.log_string('gbm2')
-gbm2 = gboosting_grid(encoded_combined_nums, Y, base_train, base_valid)
+#
+# logger.log_string('rnn0')
+# rnn0 = neural_net_grid(original_nums, Y, base_train, base_valid)
+# logger.log_string('rnn1')
+# rnn1 = neural_net_grid(encoded_nums, Y, base_train, base_valid)
+# logger.log_string('rnn2')
+# rnn2 = neural_net_grid(encoded_combined_nums, Y, base_train, base_valid)
+#
+# logger.log_string('gbm0')
+# gbm0 = gboosting_grid(original_nums, Y, base_train, base_valid)
+# logger.log_string('gbm1')
+# gbm1 = gboosting_grid(encoded_nums, Y, base_train, base_valid)
+# logger.log_string('gbm2')
+# gbm2 = gboosting_grid(encoded_combined_nums, Y, base_train, base_valid)
 print('DONE training.')
 
 
@@ -311,31 +332,31 @@ stack_valid = stack_valid.cbind(glm1.predict(stack_valid))
 stack_train = stack_train.cbind(glm2.predict(stack_train))
 stack_valid = stack_valid.cbind(glm2.predict(stack_valid))
 
-
-stack_train = stack_train.cbind(rnn0.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn0.predict(stack_valid))
-stack_train = stack_train.cbind(rnn1.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn1.predict(stack_valid))
-stack_train = stack_train.cbind(rnn2.predict(stack_train))
-stack_valid = stack_valid.cbind(rnn2.predict(stack_valid))
-
-stack_train = stack_train.cbind(gbm0.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm0.predict(stack_valid))
-stack_train = stack_train.cbind(gbm1.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm1.predict(stack_valid))
-stack_train = stack_train.cbind(gbm2.predict(stack_train))
-stack_valid = stack_valid.cbind(gbm2.predict(stack_valid))
+#
+# stack_train = stack_train.cbind(rnn0.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn0.predict(stack_valid))
+# stack_train = stack_train.cbind(rnn1.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn1.predict(stack_valid))
+# stack_train = stack_train.cbind(rnn2.predict(stack_train))
+# stack_valid = stack_valid.cbind(rnn2.predict(stack_valid))
+#
+# stack_train = stack_train.cbind(gbm0.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm0.predict(stack_valid))
+# stack_train = stack_train.cbind(gbm1.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm1.predict(stack_valid))
+# stack_train = stack_train.cbind(gbm2.predict(stack_train))
+# stack_valid = stack_valid.cbind(gbm2.predict(stack_valid))
 
 
 testHF = testHF.cbind(glm0.predict(testHF))
 testHF = testHF.cbind(glm1.predict(testHF))
 testHF = testHF.cbind(glm2.predict(testHF))
-testHF = testHF.cbind(rnn0.predict(testHF))
-testHF = testHF.cbind(rnn1.predict(testHF))
-testHF = testHF.cbind(rnn2.predict(testHF))
-testHF = testHF.cbind(gbm0.predict(testHF))
-testHF = testHF.cbind(gbm1.predict(testHF))
-testHF = testHF.cbind(gbm2.predict(testHF))
+# testHF = testHF.cbind(rnn0.predict(testHF))
+# testHF = testHF.cbind(rnn1.predict(testHF))
+# testHF = testHF.cbind(rnn2.predict(testHF))
+# testHF = testHF.cbind(gbm0.predict(testHF))
+# testHF = testHF.cbind(gbm1.predict(testHF))
+# testHF = testHF.cbind(gbm2.predict(testHF))
 
 logger.log_string('glm3')
 # glm3 = glm_grid(encoded_combined_nums + ['predict', 'predict0','predict1'], Y, stack_train, stack_valid, should_submit=True)

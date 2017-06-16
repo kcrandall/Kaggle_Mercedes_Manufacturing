@@ -53,9 +53,12 @@ sudo yum install -y libXdmcp
 
 #Install boto3 for AWS resource mgt
 pip install boto3
-# install pysparkling
-pip install h2o
+# pip install h2o
+pip install http://h2o-release.s3.amazonaws.com/h2o/rel-vapnik/1/Python/h2o-3.12.0.1-py2.py3-none-any.whl
 pip install h2o_pysparkling_2.1
+
+#install xgboost
+pip install xgboost
 
 #INSTALL SPARKLING WATER
 # wget http://h2o-release.s3.amazonaws.com/sparkling-water/rel-2.1/8/sparkling-water-2.1.8.zip

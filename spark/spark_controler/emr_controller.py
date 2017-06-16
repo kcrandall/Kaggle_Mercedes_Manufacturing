@@ -7,6 +7,9 @@ from datetime import datetime
 import tarfile
 # https://medium.com/@datitran/quickstart-pyspark-with-anaconda-on-aws-660252b88c9a
 
+from ec2_instance_data_dict import ec2_data_dict
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
@@ -18,28 +21,30 @@ logger.addHandler(ch)
 
 class EMRController(object):
     def __init__(self, profile_name = 'default', aws_access_key = False, aws_secret_access_key = False, region_name = 'us-east-1',
-                 cluster_name = 'Spark-Cluster', worker_instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
+                 cluster_name = 'Spark-Cluster', master_instance_count = 1,worker_instance_count = 3, master_instance_type = 'm3.xlarge', slave_instance_type = 'm3.xlarge',
                  key_name = 'EMR_Key', subnet_id = 'subnet-50c2a327', software_version = 'emr-5.5.0', s3_bucket = 'emr-related-files', path_script =os.path.dirname( __file__ ),
-                 additional_job_args=['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false'] ):
-        self.init_datetime_string = self.get_datetime_str()                     #Used to create a s3 directory so multiple scripts don't overwrite the same files
+                 additional_job_args=['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false'], set_maxmimum_allocation=True, number_of_executors_per_node=1 ):
+        self.init_datetime_string = self.get_datetime_str()                     # Used to create a s3 directory so multiple scripts don't overwrite the same files
 
-        self.aws_access_key = aws_access_key                                    #If you don't wan to use a credential from the AWS CLI on your machine set this
-        self.aws_secret_access_key = aws_secret_access_key                      #If you don't wan to use a credential from the AWS CLI on your machine set this
-        self.region_name = region_name                                          #AWS region to run the cluster in i.e. 'us-east-1'
+        self.aws_access_key = aws_access_key                                    # If you don't wan to use a credential from the AWS CLI on your machine set this
+        self.aws_secret_access_key = aws_secret_access_key                      # If you don't wan to use a credential from the AWS CLI on your machine set this
+        self.region_name = region_name                                          # AWS region to run the cluster in i.e. 'us-east-1'
         self.cluster_name = cluster_name+'_'+self.init_datetime_string          # Application Name on EMR
-        self.worker_instance_count = worker_instance_count                      #Total number of worker instances
+        self.master_instance_count = master_instance_count                      # Number of master nodes to deploy
+        self.worker_instance_count = worker_instance_count                      # Total number of worker instances
         self.master_instance_type = master_instance_type                        # EC2 intance type for the master node(s)
         self.slave_instance_type = slave_instance_type                          # EC2 instance type for the worker nodes
-        self.key_name = key_name                                                #Your ssh key used to ssh into the master node. i.e. 'My_KEY'
-        self.subnet_id = subnet_id                                              #The Subnet on AWS for the cluster
-        self.software_version = software_version                                #Elastic Map Reduce Version
+        self.key_name = key_name                                                # Your ssh key used to ssh into the master node. i.e. 'My_KEY'
+        self.subnet_id = subnet_id                                              # The Subnet on AWS for the cluster
+        self.software_version = software_version                                # Elastic Map Reduce Version
         self.profile_name = profile_name                                        # Define IAM profile name (see: http://boto3.readthedocs.io/en/latest/guide/configuration.html)(config file located at user folder .aws directory)
         self.s3_bucket = s3_bucket                                              # S3 Bucket to use for storage
-        self.path_script = path_script                                          #The path to your python script. If you are running /user/me/script.py set this to '/user/me'. If you are importing this from the same dir leave it default
+        self.path_script = path_script                                          # The path to your python script. If you are running /user/me/script.py set this to '/user/me'. If you are importing this from the same dir leave it default
         self.file_to_run = 'test.py'                                            # The file you want to run from the compressed files
         self.job_flow_id = None                                                 # AWS's unique ID for an EMR Cluster exameple: 'j-17LA5TIOEEEU3'
-        self.additional_job_args = additional_job_args                          #Additional args for submitting an application to cluster
-
+        self.additional_job_args = additional_job_args                          # Additional args for submitting an application to cluster
+        self.set_maxmimum_allocation = set_maxmimum_allocation                   # Calculates the maximum allocation in the cluster to use for the job then sets spark config properties boolean value: True or False
+        self.number_of_executors_per_node = number_of_executors_per_node        # The number of executors per node (only used if set_maxmimum_alocation=True)
 
     def boto_client(self, service):
         """
@@ -56,12 +61,16 @@ class EMRController(object):
             session = boto3.Session(profile_name=self.profile_name)
             return session.client(service, region_name=self.region_name)
 
-    def load_cluster(self):
+    def load_cluster(self, _spark_properties=False):
         """
         Spins up a cluster on AWS EMR.
-
+        :param dict _spark_properties: A dict of any default spark properties to set on cluster
         :return: the response object from boto
         """
+        spark_properties = {}
+        if _spark_properties:
+            spark_properties = _spark_properties
+
         response = self.boto_client("emr").run_job_flow(
             Name=self.cluster_name,
             LogUri='s3://'+self.s3_bucket+'/logs',
@@ -77,7 +86,7 @@ class EMRController(object):
                         'InstanceRole': 'MASTER',#|'CORE'|'TASK'
                         # 'BidPrice': 'string',
                         'InstanceType': self.master_instance_type,
-                        'InstanceCount': 1,
+                        'InstanceCount': self.master_instance_count,
                         # 'Configurations': [
                         #     {
                         #         'Classification': 'string',
@@ -303,16 +312,7 @@ class EMRController(object):
             # },
             {
               "Classification": "spark-defaults",
-            #   "Properties": {
-            #         "spark.executor.instances": "9",
-            #         "spark.yarn.executor.memoryOverhead": "3072",
-            #         "spark.executor.memory": "18G",
-            #         "spark.yarn.driver.memoryOverhead": "2048",
-            #         "spark.driver.memory": "13G",
-            #         "spark.executor.cores": "5",
-            #         "spark.driver.cores": "3",
-            #         "spark.default.parallelism": "90"
-            #   }
+              "Properties": spark_properties,
             }
             ],
             VisibleToAllUsers=True,
@@ -449,7 +449,7 @@ class EMRController(object):
 
 
 
-    def get_maximum_resource_allocation_properties(self,_master_memory,_master_cores,_memory_per_workder_node_gb,_cores_per_worker_node,_executors_per_node = 1,_number_of_worker_nodes=self.worker_instance_count):
+    def get_maximum_resource_allocation_properties(self,_master_memory,_master_cores,_memory_per_workder_node_gb,_cores_per_worker_node,_number_of_worker_nodes,_executors_per_node = 1):
         """
         Will calculate spark configuration settings that maximize resource
         allocation within the cluster. Useful when you know you are only going
@@ -460,12 +460,12 @@ class EMRController(object):
 
         import math
         #Set by user
-        master_memory = 16
-        master_cores = 4
+        master_memory = _master_memory
+        master_cores = _master_cores
         number_of_worker_nodes = _number_of_worker_nodes
-        memory_per_workder_node_gb = 64
-        cores_per_worker_node = 16
-        executors_per_node = 3
+        memory_per_workder_node_gb = _memory_per_workder_node_gb
+        cores_per_worker_node = _cores_per_worker_node
+        executors_per_node = _executors_per_node
 
         #Change with caution
         memory_overhead_coefficient = 0.1
@@ -570,6 +570,18 @@ class EMRController(object):
             logger.info(
                 "*******************************************+**********************************************************")
             logger.info("Create cluster and run boostrap.")
+
+            spark_properties = {}
+            if self.set_maxmimum_allocation:
+                #Get the cores/RAM of worker/master
+                master_memory = ec2_data_dict[self.master_instance_type]['memory']
+                master_cores = ec2_data_dict[self.master_instance_type]['cores']
+                worker_memory = ec2_data_dict[self.master_instance_type]['memory']
+                worker_cores = ec2_data_dict[self.master_instance_type]['cores']
+
+                spark_properties = self.get_maximum_resource_allocation_properties(_master_memory=master_memory,_master_cores=master_cores,_memory_per_workder_node_gb=worker_memory,_cores_per_worker_node=worker_cores,number_of_worker_nodes=self.worker_instance_count,_executors_per_node=self.number_of_executors_per_node)
+
+
             emr_response = self.load_cluster()
             emr_client = self.boto_client("emr")
             self.job_flow_id = emr_response.get("JobFlowId")
