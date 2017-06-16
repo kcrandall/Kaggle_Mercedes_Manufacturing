@@ -24,7 +24,8 @@
 | file_to_run: (Required) The file you want to run from the compressed files. Or path to file if not in top directory. |
 | additional_job_args: Set to false if you don't want any parameters |
 
-<b>Code:</b>
+<b>Code example 1:</b>
+This code will start up a cluster and run a pysparkling script.
 ```
 import os
 from emr_controller import EMRController
@@ -37,7 +38,20 @@ deployer.master_instance_type = 'm4.xlarge'
 deployer.slave_instance_type = 'm4.xlarge'
 deployer.instance_count = 2
 deployer.run('create')
-deployer.job_flow_id = 'j-7F2D0E3L1W1W'
+deployer.path_script = os.path.dirname( __file__ )
+deployer.file_to_run = 'test.py'
+deployer.additional_job_args = ['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false']
+deployer.run('run_job')
+```
+<b>Code example 2:</b>
+This code will run a pysparkling script on an existing cluster(j-7F2D0E3L1W1W).
+```
+import os
+from emr_controller import EMRController
+deployer = EMRController()
+deployer.profile_name = 'default'
+deployer.s3_bucket = 'emr-related-files'
+#deployer.job_flow_id = 'j-7F2D0E3L1W1W'
 deployer.path_script = os.path.dirname( __file__ )
 deployer.file_to_run = 'test.py'
 deployer.additional_job_args = ['--packages', 'ai.h2o:sparkling-water-core_2.11:2.1.7', '--conf', 'spark.dynamicAllocation.enabled=false']
@@ -45,6 +59,6 @@ deployer.run('run_job')
 ```
 
 
-<b>Suggestion:</b> The bootstrapping action usually takes ~7-15minutes. Comment out the create step and go your console and copy your cluster id. Only run the run job function on the same cluster. This will also save costs as instance hours are rounded up so you always have to pay for one hour.
+<b>Suggestion:</b> The bootstrapping action usually takes ~7-15minutes. Comment out the create step and go your console and copy your cluster id. Only run the run('run_job') function on the same cluster. This will also save time and costs as instance hours are rounded up so you always have to pay for one hour.
 
 <b>Alternative Authentication</b> If you don't have access to aws cli configurations you can set the aws_access_key and aws_secret_access_key variables, which will override the profile_name variable.
