@@ -107,12 +107,14 @@ for i, v in enumerate(MOST_IMPORTANT_VARS_ORDERD):
     if v in cats:
         MOST_IMPORTANT_VARS_ORDERD[i] = v + '_Tencode'
 
+#
+# print('Combining features....')
+# (train, valid, test) = feature_combiner(train, test, MOST_IMPORTANT_VARS_ORDERD, valid_frame = valid, frame_type='spark')
+# print('Done combining features.')
+#
+# encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark')
 
-print('Combining features....')
-(train, valid, test) = feature_combiner(train, test, MOST_IMPORTANT_VARS_ORDERD, valid_frame = valid, frame_type='spark')
-print('Done combining features.')
-
-encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y],frame_type='spark')
+# https://stackoverflow.com/questions/31774311/pca-analysis-in-pyspark
 
 ################################################################################
 #                 DONE WITH PREPROCESSING - START TRAINING                     #

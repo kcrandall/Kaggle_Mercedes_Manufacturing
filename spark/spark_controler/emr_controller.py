@@ -5,7 +5,6 @@ import logging
 import os
 from datetime import datetime
 import tarfile
-# https://medium.com/@datitran/quickstart-pyspark-with-anaconda-on-aws-660252b88c9a
 
 from spark_controler.ec2_instance_data_dict import ec2_data_dict
 
@@ -70,7 +69,6 @@ class EMRController(object):
         spark_properties = {}
         if _spark_properties:
             spark_properties = _spark_properties
-
         response = self.boto_client("emr").run_job_flow(
             Name=self.cluster_name,
             LogUri='s3://'+self.s3_bucket+'/logs',
@@ -87,15 +85,24 @@ class EMRController(object):
                         # 'BidPrice': 'string',
                         'InstanceType': self.master_instance_type,
                         'InstanceCount': self.master_instance_count,
-                        # 'Configurations': [
-                        #     {
-                        #         'Classification': 'string',
-                        #         'Configurations': {'... recursive ...'},
-                        #         'Properties': {
-                        #             'string': 'string'
-                        #         }
-                        #     },
-                        # ],
+                        'Configurations': [
+                            {
+                            "Classification": "hadoop-env", #set user environment varaibles in here
+                            "Properties": {
+                                },
+                            "Configurations": [
+                              {
+                                "Classification": "export",
+                                "Properties": {
+                                    "JAVA_OPTS" : "-Xms128m -Xmx"+str(int(ec2_data_dict[self.master_instance_type]["memory"])*1024)+"m"
+                                },
+                                "Configurations": [
+
+                                ]
+                              }
+                            ]
+                          },
+                        ],
                         # 'EbsConfiguration': {
                         #     'EbsBlockDeviceConfigs': [
                         #         {
@@ -157,15 +164,26 @@ class EMRController(object):
                         # 'BidPrice': 'string',
                         'InstanceType': self.slave_instance_type,
                         'InstanceCount': self.worker_instance_count,
-                        # 'Configurations': [
-                        #     {
-                        #         'Classification': 'string',
-                        #         'Configurations': {'... recursive ...'},
-                        #         'Properties': {
-                        #             'string': 'string'
-                        #         }
-                        #     },
-                        # ],
+                        'Configurations': [
+                            {
+                                "Classification": "hadoop-env", #set user environment varaibles in here
+                                "Properties": {
+
+                                },
+                                "Configurations": [
+                                  {
+                                    "Classification": "export",
+                                    "Properties": {
+                                        "JAVA_OPTS" : "-Xms128m -Xmx"+str(int(ec2_data_dict[self.slave_instance_type]["memory"])*1024)+"m"
+
+                                    },
+                                    "Configurations": [
+
+                                    ]
+                                  }
+                                ]
+                            },
+                        ],
                         # 'EbsConfiguration': {
                         #     'EbsBlockDeviceConfigs': [
                         #         {
@@ -268,26 +286,8 @@ class EMRController(object):
             #         'Properties': {
             #         }
             #     },
-            #     {
-            #         "Classification": "hadoop-env",
-            #         "Properties": {
-            #
-            #         },
-            #         "Configurations": [
-            #           {
-            #             "Classification": "export",
-            #             "Properties": {
-            #               "HADOOP_DATANODE_HEAPSIZE": "2048",
-            #               "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19"
-            #             },
-            #             "Configurations": [
-            #
-            #             ]
-            #           }
-            #         ]
-            #   },
               {
-                  "Classification": "hadoop-env", #set environment varaibles in here
+                  "Classification": "hadoop-env",
                   "Properties": {
 
                   },
@@ -296,6 +296,8 @@ class EMRController(object):
                       "Classification": "export",
                       "Properties": {
                           "PYTHONHASHSEED": "123", #This is required for pyspark so all nodes have the same seed
+                        #   "HADOOP_DATANODE_HEAPSIZE": "2048",
+                        #   "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19"
                       },
                       "Configurations": [
 
@@ -311,9 +313,16 @@ class EMRController(object):
             #     }
             # },
             {
-              "Classification": "spark-defaults",
+              "Classification": "spark-defaults", #Change values in Spark's spark-defaults.conf file
               "Properties": spark_properties,
-            }
+            },
+            {
+              "Classification": "yarn-site", #Change values in YARN's yarn-site.xml file
+              "Properties": {
+                "yarn.scheduler.maximum-allocation-mb": str(int(ec2_data_dict[self.slave_instance_type]["memory"])*1024 - 1024),    #So yarn can use almost the entire amount of RAM -1GB for OS
+                "yarn.nodemanager.resource.memory-mb": str(int(ec2_data_dict[self.slave_instance_type]["memory"])*1024 - 1024),     #
+              },
+            },
             ],
             VisibleToAllUsers=True,
             JobFlowRole='EMR_EC2_DefaultRole',
@@ -478,24 +487,25 @@ class EMRController(object):
         #Calculations from previous variables
         availible_master_memory = master_memory - os_reserved_memory_gb
         availible_master_cores = master_cores - os_reserved_cores
-        availible_workder_memory = memory_per_workder_node_gb - os_reserved_memory_gb
-        availible_workder_cores = cores_per_worker_node - os_reserved_cores
+        availible_worker_memory = memory_per_workder_node_gb - os_reserved_memory_gb
+        availible_worker_cores = cores_per_worker_node - os_reserved_cores
 
-        total_memory_per_executor = math.floor(availible_workder_memory/executors_per_node)
+        total_memory_per_executor = math.floor(availible_worker_memory/executors_per_node)
         overhead_memory_per_executor = math.ceil(total_memory_per_executor*memory_overhead_coefficient)
         memory_per_executor = total_memory_per_executor - overhead_memory_per_executor
-        cores_per_executor = math.floor(availible_workder_cores/executors_per_node)
-        unused_memory_per_node = availible_workder_memory -(executors_per_node*total_memory_per_executor)
-        unused_cores_per_node = availible_workder_cores - (executors_per_node*cores_per_executor)
+        cores_per_executor = math.floor(availible_worker_cores/executors_per_node)
+        unused_memory_per_node = availible_worker_memory -(executors_per_node*total_memory_per_executor)
+        unused_cores_per_node = availible_worker_cores - (executors_per_node*cores_per_executor)
 
         spark_executor_instances = number_of_worker_nodes*executors_per_node
         spark_yarn_driver_memoryOverhead = math.ceil(availible_master_memory*memory_overhead_coefficient)*1024
+
         return {
             "spark.executor.instances": str(spark_executor_instances),
             "spark.yarn.executor.memoryOverhead":str(overhead_memory_per_executor*1024),
-            "spark.executor.memory": str(memory_per_executor) +'G',
+            "spark.executor.memory": str(int(memory_per_executor*1024))+'m',
             "spark.yarn.driver.memoryOverhead":str(spark_yarn_driver_memoryOverhead),
-            "spark.driver.memory":str(min(availible_master_memory-(spark_yarn_driver_memoryOverhead/1024),executor_memory_upper_bound_gb-(executor_memory_upper_bound_gb*memory_overhead_coefficient) ))+'G',
+            "spark.driver.memory":str(int(min(availible_master_memory-(spark_yarn_driver_memoryOverhead/1024),executor_memory_upper_bound_gb-(executor_memory_upper_bound_gb*memory_overhead_coefficient) )*1024))+'m',
             "spark.executor.cores": str(cores_per_executor),
             "spark.driver.cores": str(min(availible_master_cores,executor_core_upper_bound)),
             "spark.default.parallelism":str(spark_executor_instances*cores_per_executor*parallelism_per_core)
@@ -576,15 +586,18 @@ class EMRController(object):
                 #Get the cores/RAM of worker/master
                 master_memory = ec2_data_dict[self.master_instance_type]['memory']
                 master_cores = ec2_data_dict[self.master_instance_type]['cores']
-                worker_memory = ec2_data_dict[self.master_instance_type]['memory']
-                worker_cores = ec2_data_dict[self.master_instance_type]['cores']
+                worker_memory = ec2_data_dict[self.slave_instance_type]['memory']
+                worker_cores = ec2_data_dict[self.slave_instance_type]['cores']
 
                 spark_properties = self.get_maximum_resource_allocation_properties(_master_memory=master_memory,_master_cores=master_cores,_memory_per_workder_node_gb=worker_memory,_cores_per_worker_node=worker_cores,_number_of_worker_nodes=self.worker_instance_count,_executors_per_node=self.number_of_executors_per_node)
+                print('spark_properties:')
+                print(spark_properties)
 
-
-            emr_response = self.load_cluster()
+            #Spin up the cluster
+            emr_response = self.load_cluster(_spark_properties = spark_properties)
             emr_client = self.boto_client("emr")
             self.job_flow_id = emr_response.get("JobFlowId")
+            #wait until cluster is in a ready state
             while True:
                 job_response = emr_client.describe_cluster(
                     ClusterId=emr_response.get("JobFlowId")
