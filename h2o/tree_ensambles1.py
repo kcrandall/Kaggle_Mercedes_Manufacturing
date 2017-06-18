@@ -15,7 +15,7 @@ import pandas as pd
 from get_type_lists import get_type_lists
 from target_encoder import target_encoder
 from feature_combiner import feature_combiner
-
+from dimensionality_reduction import dimensionality_reduction
 
 Y            = 'y'
 ID_VAR       = 'ID'
@@ -29,17 +29,8 @@ MOST_IMPORTANT_VARS_ORDERD = ['X5','X0','X8','X3','X1','X2','X314','X47','X118',
 train = h2o.import_file('/Users/kcrandall/GitHub/Kaggle_Mercedes_Manufacturing/data/train.csv')
 test = h2o.import_file('/Users/kcrandall/GitHub/Kaggle_Mercedes_Manufacturing/data/test.csv')
 
-# bug fix - from Keston
-dummy_col = np.random.rand(test.shape[0])
-test = test.cbind(h2o.H2OFrame(dummy_col))
-cols = test.columns
-cols[-1] = Y
-test.columns = cols
-print(train.shape)
-print(test.shape)
 
-
-original_nums, cats = get_type_lists(frame=train)
+original_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y])
 
 
 train, valid = train.split_frame([0.7], seed=12345)
@@ -58,19 +49,45 @@ for i, var in enumerate(cats):
 
 print('Done.')
 
-encoded_nums, cats = get_type_lists(frame=train)
+encoded_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y])
 
 #Remplace cats with encoded cats from MOST_IMPORTANT_VARS_ORDERD
 for i, v in enumerate(MOST_IMPORTANT_VARS_ORDERD):
     if v in cats:
         MOST_IMPORTANT_VARS_ORDERD[i] = v + '_Tencode'
 
+(train2, valid2, test2) = dimensionality_reduction(train,test,encoded_nums,valid_frame=valid)
+
+train3 = train2.cbind(train[ID_VAR])
+del train2
+train = train3.cbind(train[Y])
+del train3
+valid3 = valid2.cbind(valid[ID_VAR])
+del valid2
+valid = valid3.cbind(valid[Y])
+del valid3
+test = test2.cbind(test[ID_VAR])
+del test2
+
 
 print('Combining features....')
 (train, valid, test) = feature_combiner(train, test, MOST_IMPORTANT_VARS_ORDERD[0:12], valid_frame = valid, frame_type='h2o')
 print('Done combining features.')
 
-encoded_combined_nums, cats = get_type_lists(frame=train)
+
+encoded_combined_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y])
+
+
+encoded_combined_decomposed_nums, cats = get_type_lists(frame=train,rejects=[ID_VAR,Y])
+
+# bug fix - from Keston
+dummy_col = np.random.rand(test.shape[0])
+test = test.cbind(h2o.H2OFrame(dummy_col))
+cols = test.columns
+cols[-1] = Y
+test.columns = cols
+print(train.shape)
+print(test.shape)
 
 def ranked_preds_plot(y, valid, preds):
 
@@ -162,10 +179,10 @@ rf_model1 = H2ORandomForestEstimator(
     nfolds=3,
     keep_cross_validation_predictions=True,
     seed=12345)
-
+print('Training model 1...')
 # train rf model
 rf_model1.train(
-    x=encoded_combined_nums,
+    x=encoded_combined_decomposed_nums,
     y=Y,
     training_frame=train,
     validation_frame=valid)
@@ -191,10 +208,10 @@ ert_model1 = H2ORandomForestEstimator(
     keep_cross_validation_predictions=True,
     seed=12345,
     histogram_type='random')
-
+print('Training model 2...')
 # train ert model
 ert_model1.train(
-    x=encoded_combined_nums,
+    x=encoded_combined_decomposed_nums,
     y=Y,
     training_frame=train,
     validation_frame=valid)
@@ -217,19 +234,19 @@ h2o_gbm_model = H2OGradientBoostingEstimator(
     keep_cross_validation_predictions=True,
     stopping_rounds = 10,
     seed = 12345)
-
-# execute training
-h2o_gbm_model.train(x=encoded_combined_nums,
-                    y=Y,
-                    training_frame=train,
-                    validation_frame=valid)
-
-# print model information/create submission
-print(h2o_gbm_model)
-h2o_gbm_preds1_val = h2o_gbm_model.predict(valid)
-ranked_preds_plot(Y, valid, h2o_gbm_preds1_val) # better validation error
-h2o_gbm_preds1_test = h2o_gbm_model.predict(test)
-gen_submission(h2o_gbm_preds1_test)
+# print('Training model 3...')
+# # execute training
+# h2o_gbm_model.train(x=encoded_combined_decomposed_nums,
+#                     y=Y,
+#                     training_frame=train,
+#                     validation_frame=valid)
+#
+# # print model information/create submission
+# print(h2o_gbm_model)
+# h2o_gbm_preds1_val = h2o_gbm_model.predict(valid)
+# ranked_preds_plot(Y, valid, h2o_gbm_preds1_val) # better validation error
+# h2o_gbm_preds1_test = h2o_gbm_model.predict(test)
+# gen_submission(h2o_gbm_preds1_test)
 
 
 # initialize XGB GBM
@@ -245,7 +262,7 @@ h2o_xgb_model = H2OXGBoostEstimator(
     seed = 12345)
 
 # execute training
-h2o_xgb_model.train(x=encoded_combined_nums,
+h2o_xgb_model.train(x=encoded_combined_decomposed_nums,
                     y=Y,
                     training_frame=train,
                     validation_frame=valid)
@@ -255,7 +272,7 @@ print(h2o_xgb_model)
 h2o_xgb_preds1_val = h2o_xgb_model.predict(valid)
 ranked_preds_plot(Y, valid, h2o_xgb_preds1_val)
 h2o_xgb_preds1_test = h2o_xgb_model.predict(test)
-gen_submission(h2o_xgb_preds1_test) 
+gen_submission(h2o_xgb_preds1_test)
 
 
 # create XGBoost blend
@@ -270,8 +287,8 @@ stack = H2OStackedEnsembleEstimator(training_frame=train,
                                     validation_frame=valid,
                                     base_models=[rf_model1, ert_model1,
                                                  h2o_gbm_model])
-
-stack.train(x=encoded_combined_nums,
+print('Training model 4...')
+stack.train(x=encoded_combined_decomposed_nums,
             y=Y,
             training_frame=train,
             validation_frame=valid)
