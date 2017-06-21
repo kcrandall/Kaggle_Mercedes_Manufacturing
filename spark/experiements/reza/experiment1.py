@@ -12,14 +12,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
 from pyspark.sql import functions as F #https://stackoverflow.com/questions/39504950/python-pyspark-get-sum-of-a-pyspark-dataframe-column-values
 
-sys.path.append('..')
-sys.path.append('..')
 from get_type_lists import get_type_lists
 from target_encoder import target_encoder
 from feature_combiner import feature_combiner
 from logging_lib.LoggingController import LoggingController
-sys.path.remove('..')
-sys.path.remove('..')
 
 #Define your s3 bucket to load and store data
 S3_BUCKET = 'emr-related-files'
