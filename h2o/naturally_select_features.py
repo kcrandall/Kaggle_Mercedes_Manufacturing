@@ -31,8 +31,8 @@ def naturally_select_features(train, valid, X, Y, frame_type='h2o'):
 
         for i in range(0,200):
             if i==0:
-                print(train_frame.columns)
-                print(X)
+                # print(train_frame.columns)
+                # print(X)
                 features_passed_previous_round = X
                 features_passing_to_next_round = []
             else:
@@ -44,8 +44,10 @@ def naturally_select_features(train, valid, X, Y, frame_type='h2o'):
                 column_frames = []
                 kf = KFold(n_splits=n_folds)
                 for train_index, test_index in kf.split(features_passed_previous_round):
-                    print(test_index)
-                    columns = features_passed_previous_round[test_index]
+                    # print(test_index)
+                    columns = []
+                    for x in test_index:
+                        columns.append(features_passed_previous_round[x])
                     column_frames.append(columns)
                 # for k in range(0,n_folds):
                 #     df_1, df_2 = train_test_split(df, test_size = 0.2)
@@ -67,10 +69,12 @@ def naturally_select_features(train, valid, X, Y, frame_type='h2o'):
 
                     # execute training
                     h2o_xgb_model.train(x=column_frames[k],
-                                        y='y',
+                                        y=Y,
                                         training_frame=train,
                                         validation_frame=valid)
                     most_important_variables = h2o_xgb_model.varimp(use_pandas=False)
 
                     number_of_features_passed = math.floor(len(train_frame.columns)*number_of_features_to_make_the_cut)
                     features_passing_to_next_round.append(most_important_variables[0:number_of_features_passed-1])
+                    print(most_important_variables[0:number_of_features_passed-1])
+                    print(features_passing_to_next_round)
