@@ -14,7 +14,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
 from pyspark.sql import functions as F #https://stackoverflow.com/questions/39504950/python-pyspark-get-sum-of-a-pyspark-dataframe-column-values
 
-from spark.logging_lib.LoggingController import LoggingController
+from logging_lib.LoggingController import LoggingController
 
 import h2o
 h2o.show_progress()                                          # turn on progress bars
