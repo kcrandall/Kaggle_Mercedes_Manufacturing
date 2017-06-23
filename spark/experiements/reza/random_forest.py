@@ -33,7 +33,7 @@ from pysparkling import *
 
 
 #Define your s3 bucket to load and store data
-S3_BUCKET = 'emr-related-files'
+S3_BUCKET = 'rza-ml-1'
 
 #Create a custom logger to log statistics and plots
 logger = LoggingController()
@@ -99,7 +99,7 @@ logger.log_string("Train Summary:")
 logger.log_string("Rows:{}".format(train_h20_frame.nrow))
 logger.log_string("Cols:{}".format(train_h20_frame.ncol))
 
-X = [name for name in train.columns if name not in ['id', '_WARN_', y]]
+X = [name for name in train.columns if name not in ['id', '_WARN_', Y]]
 
 
 # assign target and inputs
@@ -108,10 +108,7 @@ X = [name for name in train.columns if name not in ['id', '_WARN_', y]]
 #print(y)
 #print(X)
 
-# set target to factor - for binary classification
-train[Y] = train[Y].asfactor()
-valid[Y] = valid[Y].asfactor()
-test[Y] = test[Y].asfactor()
+
 
 # random forest
 
@@ -127,13 +124,13 @@ rf_model = H2ORandomForestEstimator(
 rf_model.train(
     x=X,
     y=Y,
-    training_frame=train,
+    training_frame=train_h20_frame,
     validation_frame=valid)
 
 # print model information
 
 
-sub = testHF[ID_VAR].cbind(rf_model.predict(testHF))
+sub = test_h2o_frame[ID_VAR].cbind(rf_model.predict(test_h2o_frame))
 print(sub.head())
 
 
