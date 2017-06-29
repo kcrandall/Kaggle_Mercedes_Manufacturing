@@ -125,7 +125,7 @@ rf_model.train(
     x=X,
     y=Y,
     training_frame=train_h20_frame,
-    validation_frame=valid)
+    validation_frame=valid_h20_frame)
 
 # print model information
 
